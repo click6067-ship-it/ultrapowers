@@ -1,0 +1,23 @@
+{
+  "_comment": "예시(복사용) · 새 머신에서 편의 권한을 opt-in할 때 참고. 자동 적용 안 됨 — 신뢰하는 본인 머신의 ~/.claude/settings.json permissions.allow에 손수 추가. ⚠️ python3:* 는 임의 코드 실행이므로 '신뢰하는 에이전트' 전제에서만. 정본 권한설계 근거는 council/2026-05-27_agentic-system/.",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git worktree:*)",
+      "Bash(ls:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm ci)",
+      "Bash(npx vitest:*)",
+      "Bash(npx vite:*)",
+      "Bash(python3:*)",
+      "Read(/${COMMAND_CENTER}/**)"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "_comment": "ultrapowers 포터블 템플릿. install.sh가 __CLAUDE__ → ~/.claude 로 치환(hook은 ~/.claude/hooks/에 설치됨). command-center 경로는 hook이 COMMAND_CENTER env(기본 ~/main)로 읽음. allow=[] 의도적(권한=로컬 신뢰 opt-in; 예시는 settings.local.example.json). techreport-autopush.py(보고서 자동 git push)는 기본 비활성 — 원하면 SessionEnd hooks에 직접 추가(opt-in).",
+  "env": {
+    "COMMAND_CENTER": "__CC__",
+    "LD_LIBRARY_PATH": "__CLAUDE__/tools/headless/chromedeps/usr/lib/x86_64-linux-gnu"
+  },
+  "permissions": {
+    "allow": [],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __CLAUDE__/hooks/recent-context.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __CLAUDE__/hooks/export-sessions.py >/dev/null 2>&1"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "__CLAUDE__/hooks/session-end-summary.py"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "vercel@claude-plugins-official": true,
+    "codex@openai-codex": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    }
+  },
+  "effortLevel": "xhigh",
+  "theme": "dark-daltonized"
+}
