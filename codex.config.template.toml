@@ -1,0 +1,24 @@
+# Codex 전역 config 템플릿 (공개·안전 기본값 — danger 없음)
+# ultrapowers install.sh가 ~/.codex/config.toml로 복원(기존 있으면 미설치).
+# ⚠️ 무샌드박스/no-approval은 격리환경 전제로만 — 이 템플릿은 안전 기본(workspace-write · on-request).
+# ⚠️ FIRECRAWL_API_KEY = placeholder → firecrawl.dev서 발급해 교체.
+
+personality = "pragmatic"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+# 웹검색 기본 ON
+[tools]
+web_search = true
+
+# MCP (Claude 측과 대칭)
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+
+[mcp_servers.firecrawl]
+command = "npx"
+args = ["-y", "firecrawl-mcp"]
+
+[mcp_servers.firecrawl.env]
+FIRECRAWL_API_KEY = "fc-REPLACE_ME"

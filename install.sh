@@ -44,6 +44,13 @@ echo "▶ statusline + 커스텀 서브에이전트 (researcher·verifier·redte
 [ -f "$SRC/statusline.py" ] && { backup "$DST/statusline.py"; cp "$SRC/statusline.py" "$DST/statusline.py"; }
 if ls "$SRC"/agents/*.md >/dev/null 2>&1; then mkdir -p "$DST/agents"; cp "$SRC"/agents/*.md "$DST/agents/"; fi
 
+echo "▶ doctor + Codex config (안전 기본 — danger 없음, 키 placeholder)"
+[ -f "$SRC/doctor.py" ] && cp "$SRC/doctor.py" "$DST/doctor.py"
+if [ -f "$SRC/codex.config.template.toml" ] && [ ! -f "$HOME/.codex/config.toml" ]; then
+  mkdir -p "$HOME/.codex"; cp "$SRC/codex.config.template.toml" "$HOME/.codex/config.toml"
+  echo "  ~/.codex/config.toml 생성(web_search·MCP, FIRECRAWL_API_KEY=placeholder → 실제 키로 교체)"
+fi
+
 echo "▶ settings.json (hook 경로 → ~/.claude/hooks/, command-center → $CC)"
 _SUBST=$(mktemp)
 sed -e "s#__CLAUDE__#$DST#g" -e "s#__CC__#$CC#g" "$SRC/settings.template.json" \
@@ -57,6 +64,9 @@ else
   echo "  ⚠️ 기존 settings.json 존재 → 덮지 않음(머신별 설정 보존). 병합 참고용: $DST/settings.deploy-template.json (필수키: env·hooks·enabledPlugins)"
 fi
 rm -f "$_SUBST"
+
+echo "▶ 설치 검증 (doctor — codex auth·hooks·plugins·statusline·버전)"
+[ -f "$DST/doctor.py" ] && { COMMAND_CENTER="$CC" python3 "$DST/doctor.py" 2>/dev/null || echo "  (doctor 스킵)"; }
 
 cat <<NEXT
 
