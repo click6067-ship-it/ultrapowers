@@ -95,6 +95,8 @@ cat <<NEXT
    1) 플러그인(세션 안, 직접):  /plugin install superpowers@claude-plugins-official · vercel@claude-plugins-official · codex@openai-codex
    2) MCP:    claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
               claude mcp add -s user --transport http vercel https://mcp.vercel.com
+              claude mcp add -s user --env FIRECRAWL_API_KEY=<키> firecrawl -- npx -y firecrawl-mcp
+              # ~/.codex/config.toml 생성됨(context7+firecrawl) — FIRECRAWL_API_KEY placeholder를 실제 키로 교체
    3) 로그인:  claude(OAuth) · codex login(ChatGPT) · vercel /mcp
    ※ 두 모델 워크플로라 Claude Max + Codex Pro 가정.
 NEXT

@@ -2,9 +2,9 @@
 """guardrail.py — PreToolUse 정책 훅 (deny-by-policy).
 
 치명적·비가역 작업만 차단(exit 2), 나머지 자율 허용(exit 0).
-- shlex 토큰화(따옴표 처리: rm -rf "$HOME" 도 인식)
-- 세그먼트 첫 토큰 기준(문자열에 위험단어 *언급*만 된 경우는 미차단 — 자율성 보존)
-- `bash -c '...'`/`sh -c` 내부 명령 재귀 검사(우회 차단)
+- shlex 토큰화(따옴표: rm -rf "$HOME"), 세그먼트 첫 토큰 기준(문자열 *언급*은 미차단 — 자율성 보존)
+- 단·롱 플래그 모두(`-rf`, `--recursive --force`), 확장 홈/시스템 루트 타깃 인식
+- `bash -c '...'` 내부 재귀 검사(우회 차단)
 guardrail은 *방어선이지 샌드박스가 아니다* — 정상작업을 막지 않는 선에서 최악만 거른다.
 stdin: PreToolUse JSON {tool_input:{command}}. 차단은 ~/main/logs/guardrail.log 기록.
 """
@@ -15,8 +15,36 @@ import shlex
 import sys
 import time
 
-DANGER_TARGET = re.compile(r'^(/|~|\$HOME|\$\{HOME\}|/\*|~/?\*|\$HOME/?\*|\$\{HOME\}/?\*)$')
+HOMEDIR = os.path.expanduser("~")
+_SYS_ROOTS = {"/home", "/root", "/usr", "/etc", "/var", "/bin", "/boot", "/lib", "/sys", "/opt"}
 _cmd_for_log = ""
+
+
+def is_danger_target(t):
+    s = t.rstrip("/").rstrip("*").rstrip("/")
+    if s in ("", "/"):                 # /  ·  /*  ·  /
+        return True
+    if s in ("~", "$HOME", "${HOME}", HOMEDIR):
+        return True
+    return s in _SYS_ROOTS
+
+
+def has_recursive(args):
+    for a in args:
+        if a in ("-r", "-R", "--recursive"):
+            return True
+        if re.match(r'^-[a-zA-Z]+$', a) and ("r" in a or "R" in a):
+            return True
+    return False
+
+
+def has_force(args):
+    for a in args:
+        if a in ("-f", "--force"):
+            return True
+        if re.match(r'^-[a-zA-Z]+$', a) and "f" in a:
+            return True
+    return False
 
 
 def block(why):
@@ -56,21 +84,19 @@ def check(cmd, depth=0):
             continue
         c0 = toks[i]
         args = toks[i + 1:]
-        # shell -c 재귀
         if c0 in ("bash", "sh", "zsh", "dash", "ksh") and "-c" in args:
             ci = args.index("-c")
             if ci + 1 < len(args):
                 check(args[ci + 1], depth + 1)
             continue
-        flags = "".join(t[1:] for t in args if re.match(r'^-[a-zA-Z]+$', t))
-        if c0 == "rm" and "r" in flags and "f" in flags and any(DANGER_TARGET.match(t) for t in args):
-            block("rm -rf 홈/루트/전역")
+        if c0 == "rm" and has_recursive(args) and has_force(args) and any(is_danger_target(t) for t in args):
+            block("rm -rf 홈/루트/시스템")
         elif c0 == "mkfs" or c0.startswith("mkfs."):
             block("파일시스템 포맷(mkfs)")
         elif c0 == "dd" and any(re.match(r'of=/dev/(sd|nvme|hd|disk|mmcblk)', t) for t in args):
             block("디스크 직접 덮어쓰기(dd of=/dev/)")
-        elif c0 == "chmod" and "R" in flags and any(t in ("777", "0777") for t in args) \
-                and any(DANGER_TARGET.match(t) for t in args):
+        elif c0 == "chmod" and has_recursive(args) and any(t in ("777", "0777") for t in args) \
+                and any(is_danger_target(t) for t in args):
             block("chmod -R 777 홈/루트")
         elif c0 == "git" and "push" in args \
                 and re.search(r'--force\b|--force-with-lease\b|(^|\s)-f(\s|$)', seg) \
