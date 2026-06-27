@@ -60,10 +60,28 @@ sed -e "s#__CLAUDE__#$DST#g" -e "s#__CC__#$CC#g" "$SRC/settings.template.json" \
 if [ ! -f "$DST/settings.json" ]; then
   cp "$_SUBST" "$DST/settings.json"
   echo "  신규 생성(경로 치환). permissions.allow=[] — 편의 권한은 settings.local.example.json 참고해 본인 opt-in."
-else
+elif command -v jq >/dev/null 2>&1; then
   backup "$DST/settings.json"
-  cp "$_SUBST" "$DST/settings.deploy-template.json"
-  echo "  ⚠️ 기존 settings.json 존재 → 덮지 않음(머신별 설정 보존). 병합 참고용: $DST/settings.deploy-template.json (필수키: env·hooks·enabledPlugins)"
+  if jq -s '.[0] as $live | .[1] as $tmpl | $live
+      | .env = ((.env // {}) + {LD_LIBRARY_PATH: $tmpl.env.LD_LIBRARY_PATH})
+      | .enabledPlugins = ($tmpl.enabledPlugins + ($live.enabledPlugins // {}))
+      | .extraKnownMarketplaces = (($tmpl.extraKnownMarketplaces // {}) + ($live.extraKnownMarketplaces // {}))
+      | .statusLine = ($live.statusLine // $tmpl.statusLine)
+      | .effortLevel = ($live.effortLevel // $tmpl.effortLevel)
+      | .theme = ($live.theme // $tmpl.theme)
+      | .hooks = (reduce ($tmpl.hooks | to_entries[]) as $e (($live.hooks // {});
+          .[$e.key] = (((.[$e.key] // []) + $e.value) | group_by(.matcher)
+            | map({matcher: .[0].matcher, hooks: (map(.hooks[]) | unique_by(.command))}))))
+    ' "$DST/settings.json" "$_SUBST" > "$DST/settings.json.new"; then
+    mv "$DST/settings.json.new" "$DST/settings.json"
+    echo "  기존 settings.json 머지(env·hooks·plugins·statusLine, matcher 보존, idempotent). allow·plugin-disable 보존. 백업=.bak.*"
+  else
+    rm -f "$DST/settings.json.new"; cp "$_SUBST" "$DST/settings.deploy-template.json"
+    echo "  ⚠️ jq 머지 실패 — 원본 유지(백업=.bak.*), 참고: $DST/settings.deploy-template.json"
+  fi
+else
+  backup "$DST/settings.json"; cp "$_SUBST" "$DST/settings.deploy-template.json"
+  echo "  ⚠️ jq 없음 → 자동머지 생략(반쪽머지 방지). 기존 유지(백업=.bak.*), 참고: $DST/settings.deploy-template.json"
 fi
 rm -f "$_SUBST"
 

@@ -22,6 +22,11 @@ Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so C
 | cross-session memory | Recent cross-folder context injected at session start; every turn archived to markdown |
 | 7 skills | `kickoff` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
 | 4 hooks | session-start context · per-turn archive · session-end summary · techreport auto-push (opt-in) |
+| guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master) and lets everything else run — autonomy preserved, deny-by-policy |
+| 3 subagents | `researcher` (multi-source web research + crawl) · `verifier` (single-claim adversarial check) · `redteam` (in-session critic) |
+| doctor + verify | `doctor.py` health check (auth · hooks · plugins · statusline · runtime versions; runs at install end) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
+| statusline | bottom bar — model · context% · dir · git branch · session cost |
+| Codex config | safe `~/.codex/config.toml` template (`workspace-write` + `on-request` + web search + context7/firecrawl MCP, key placeholder) |
 
 ## How it works
 
@@ -120,14 +125,16 @@ bash ~/ultrapowers/install.sh
 #    /plugin install vercel@claude-plugins-official
 #    /plugin marketplace add openai/codex-plugin-cc && /plugin install codex@openai-codex
 
-# 4. MCP
+# 4. MCP (kept minimal — 3-6 servers is the sweet spot; GitHub via the gh CLI)
 claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
 claude mcp add -s user --transport http vercel https://mcp.vercel.com
+claude mcp add -s user --env FIRECRAWL_API_KEY=<key> firecrawl -- npx -y firecrawl-mcp   # web crawl; key from firecrawl.dev
+#    Codex side: ~/.codex/config.toml is created with context7 + firecrawl — replace the FIRECRAWL_API_KEY placeholder
 
 # 5. Log in: claude (OAuth) · codex login · vercel via /mcp
 ```
 
-The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `skills/` · `hooks/` · `tools/headless/` into `~/.claude`, with hook paths and the command-center location substituted. `settings.template.json` ships `permissions.allow: []` — local command permissions are opt-in (see `settings.local.example.json`).
+The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `skills/` · `hooks/` · `tools/headless/` · `agents/` · `statusline.py` · `guardrail.py` · `verify.sh` · `doctor.py` into `~/.claude`, plus a safe `~/.codex/config.toml`, with paths substituted. If a `settings.json` already exists it is **merged idempotently** (env · hooks · plugins · statusLine; needs `jq`); otherwise it is created from the template (`permissions.allow: []` — opt-in, see `settings.local.example.json`). It then runs `doctor.py` to verify the install.
 
 ## Layout
 
@@ -137,7 +144,10 @@ The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `s
 | `skills/` | The 7 skills (`spec-decompose` also ships `spec_doctor.py` + templates) |
 | `hooks/` | The 4 session hooks |
 | `tools/headless/` | `vcheck` · `demo` (Playwright + ffmpeg; Chromium runs `--no-sandbox`, so point them at trusted URLs; WSL needs chromium libs, installed separately) |
-| `install.sh` | One-shot, location-independent installer |
+| `agents/` | 3 subagents — `researcher` · `verifier` · `redteam` |
+| `guardrail.py` · `doctor.py` · `verify.sh` · `statusline.py` | PreToolUse guardrail · health check · verification matrix · status bar |
+| `codex.config.template.toml` | safe Codex config (web search + MCP, no danger bypass, key placeholder) |
+| `install.sh` | One-shot, location-independent installer (idempotent settings merge + post-install doctor) |
 | `settings.template.json` · `settings.local.example.json` | Harness template + example local permission allowlist |
 
 ## Built on
