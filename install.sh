@@ -44,8 +44,10 @@ echo "▶ statusline + 커스텀 서브에이전트 (researcher·verifier·redte
 [ -f "$SRC/statusline.py" ] && { backup "$DST/statusline.py"; cp "$SRC/statusline.py" "$DST/statusline.py"; }
 if ls "$SRC"/agents/*.md >/dev/null 2>&1; then mkdir -p "$DST/agents"; cp "$SRC"/agents/*.md "$DST/agents/"; fi
 
-echo "▶ doctor + Codex config (안전 기본 — danger 없음, 키 placeholder)"
+echo "▶ doctor + guardrail + verify + Codex config (안전 기본 — danger 없음, 키 placeholder)"
 [ -f "$SRC/doctor.py" ] && cp "$SRC/doctor.py" "$DST/doctor.py"
+[ -f "$SRC/guardrail.py" ] && cp "$SRC/guardrail.py" "$DST/guardrail.py"
+[ -f "$SRC/verify.sh" ] && cp "$SRC/verify.sh" "$DST/verify.sh"
 if [ -f "$SRC/codex.config.template.toml" ] && [ ! -f "$HOME/.codex/config.toml" ]; then
   mkdir -p "$HOME/.codex"; cp "$SRC/codex.config.template.toml" "$HOME/.codex/config.toml"
   echo "  ~/.codex/config.toml 생성(web_search·MCP, FIRECRAWL_API_KEY=placeholder → 실제 키로 교체)"
