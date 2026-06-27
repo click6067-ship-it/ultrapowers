@@ -24,9 +24,12 @@ def is_danger_target(t):
     s = t.rstrip("/").rstrip("*").rstrip("/")
     if s in ("", "/"):                 # /  ·  /*  ·  /
         return True
-    if s in ("~", "$HOME", "${HOME}", HOMEDIR):
+    if s in ("~", "$HOME", "${HOME}", HOMEDIR) or s in _SYS_ROOTS:
         return True
-    return s in _SYS_ROOTS
+    # $HOME / ${HOME...} 파라미터 확장(:- :? % # 등)이 홈 루트로 펼쳐지는 형태 (서브디렉터리는 제외)
+    if re.match(r'^\$\{?HOME([:%#?+=!^,/\-][^}]*)?\}?$', s):
+        return True
+    return False
 
 
 def has_recursive(args):
