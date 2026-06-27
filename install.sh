@@ -40,6 +40,10 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
   echo "  ℹ️ WSL 감지 — vcheck/demo의 chromium은 시스템 libs(chromedeps)가 필요(이 레포 미번들). README 'WSL' 참조."
 fi
 
+echo "▶ statusline + 커스텀 서브에이전트 (researcher·verifier·redteam)"
+[ -f "$SRC/statusline.py" ] && { backup "$DST/statusline.py"; cp "$SRC/statusline.py" "$DST/statusline.py"; }
+if ls "$SRC"/agents/*.md >/dev/null 2>&1; then mkdir -p "$DST/agents"; cp "$SRC"/agents/*.md "$DST/agents/"; fi
+
 echo "▶ settings.json (hook 경로 → ~/.claude/hooks/, command-center → $CC)"
 _SUBST=$(mktemp)
 sed -e "s#__CLAUDE__#$DST#g" -e "s#__CC__#$CC#g" "$SRC/settings.template.json" \

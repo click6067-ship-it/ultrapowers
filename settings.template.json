@@ -59,5 +59,9 @@
     }
   },
   "effortLevel": "xhigh",
-  "theme": "dark-daltonized"
+  "theme": "dark-daltonized",
+  "statusLine": {
+    "type": "command",
+    "command": "python3 __CLAUDE__/statusline.py"
+  }
 }

@@ -6,7 +6,8 @@
 
 ## 🖥 실행 환경 (이 머신)
 - **WSL2(Ubuntu) + VSCode.** 경로·셸은 리눅스 기준(`${HOME}/...`), Windows 측은 `/mnt/c/...`.
-- **여긴 크리덴셜 있는 실작업 머신.** 파괴적·비가역 작업은 먼저 확인. no-sandbox / `danger-full-access`는 **격리환경(throwaway 브랜치·컨테이너·no-secrets)** 전제로만. 실작업 구현은 `workspace-write -C <repo>`. 기획·리뷰는 `read-only`(+`tools.web_search=true`)면 충분.
+- **여긴 크리덴셜 있는 실작업 머신.** 파괴적·비가역 작업은 먼저 확인. no-sandbox / `danger-full-access`는 (원칙상) **격리환경(throwaway 브랜치·컨테이너·no-secrets)** 전제로만. 실작업 구현은 `workspace-write -C <repo>`, 기획·리뷰는 `read-only`.
+- **도구 (2026-06-28).** `web_search` = config 기본 ON(매 호출 `-c` 불필요). **MCP**: `context7`(최신 라이브러리 문서) · `firecrawl`(웹 크롤). 풀파워 단계(정의·research·plan)서 적극 사용.
 
 ## 🧠 행동 규칙 (Karpathy 4룰) — 절대
 1. **추측 금지, 가정 명시** — 모호하면 멈추고 묻는다. 조용히 가정하고 진행 X.
