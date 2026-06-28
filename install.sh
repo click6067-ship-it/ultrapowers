@@ -48,6 +48,7 @@ echo "▶ doctor + guardrail + verify + Codex config (안전 기본 — danger �
 [ -f "$SRC/doctor.py" ] && cp "$SRC/doctor.py" "$DST/doctor.py"
 [ -f "$SRC/guardrail.py" ] && cp "$SRC/guardrail.py" "$DST/guardrail.py"
 [ -f "$SRC/verify.sh" ] && cp "$SRC/verify.sh" "$DST/verify.sh"
+if ls "$SRC"/workflows/*.js >/dev/null 2>&1; then mkdir -p "$DST/workflows"; cp "$SRC"/workflows/*.js "$DST/workflows/"; fi
 if [ -f "$SRC/codex.config.template.toml" ] && [ ! -f "$HOME/.codex/config.toml" ]; then
   mkdir -p "$HOME/.codex"; cp "$SRC/codex.config.template.toml" "$HOME/.codex/config.toml"
   echo "  ~/.codex/config.toml 생성(web_search·MCP, FIRECRAWL_API_KEY=placeholder → 실제 키로 교체)"
