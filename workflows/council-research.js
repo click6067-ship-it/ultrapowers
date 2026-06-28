@@ -55,10 +55,12 @@ for (const f of found) {
     if (k && !seen.has(k)) { seen.add(k); claims.push(c) }
   }
 }
-log(`${claims.length} unique claims to verify`)
+const TOPN = 25  // stop-rule: 검증 fan-out 비용 상한(좁은 질문에 35+에이전트 폭주 방지)
+const toVerify = claims.slice(0, TOPN)
+log(`${claims.length} unique claims, verifying top ${toVerify.length}`)
 
 phase('Verify')
-const verdicts = (await parallel(claims.map((c) => () =>
+const verdicts = (await parallel(toVerify.map((c) => () =>
   agent(
     `Adversarially verify this claim — TRY TO REFUTE it with independent sources. ` +
     `Default holds=false if you cannot confirm.\nClaim: ${c.claim}\nGiven source: ${c.source || '(none)'}`,
