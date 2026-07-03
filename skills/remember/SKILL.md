@@ -1,6 +1,6 @@
 ---
 name: remember
-description: Save one durable fact to cross-session curated memory. Use when asked to "remember X", "기억해", "이거 기억해둬", "save this to memory", "메모리에 저장", or when a non-obvious fact worth keeping surfaces (user preference, project constraint, working-style feedback, external reference). Writes a memory file (one file = one fact) + updates the MEMORY.md index + mirrors to the git snapshot. Automatic conversation logging is separate (Stop hook) — this is for curated facts you want recalled later.
+description: Use when the user says 기억해/기억해둬/remember this/메모리에 저장/save to memory, or a durable non-obvious fact surfaces (user preference, project constraint, working-style feedback, external reference). Writes one memory file (1 file = 1 fact) + MEMORY.md index + git snapshot mirror. NEVER store credentials — pointer only.
 ---
 
 # /remember — 사실 하나를 메모리에 저장

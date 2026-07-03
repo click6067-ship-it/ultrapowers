@@ -1,6 +1,6 @@
 ---
 name: spec-decompose
-description: Phase 0 마스터 기획서(spec/기획서)를 섹션별 child spec으로 분해하는 범용 spec tree manager. master를 읽고 LLM이 분해안(섹션 트리+복잡도)을 제안→사용자 승인→child spec 스켈레톤 생성. 기획(spec)에서 멈추고 구현계획·태스크는 superpowers writing-plans에 handoff(세 번째 프레임워크 아님). 결정론적 검증·tree 재생성은 spec_doctor.py. "기획서 분해", "decompose spec", "마스터 기획서 쪼개", "스펙 트리", "spec-decompose", "spec-doctor" 요청 시. 이 SKILL.md가 절차 정본.
+description: Use when the user says 기획서 분해/스펙 분해/decompose spec/스펙 트리/spec-doctor 돌려/마스터 기획서 쪼개. Splits a Phase 0 master spec into per-section child specs (LLM proposes tree → user approves → skeletons), stops at spec and hands off to superpowers writing-plans. Deterministic validation/tree rebuild = spec_doctor.py.
 ---
 
 # spec-decompose — 재귀적 기획서 분해 (spec tree manager)

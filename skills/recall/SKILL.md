@@ -1,6 +1,6 @@
 ---
 name: recall
-description: Search past work across ALL folders/projects — the full conversation archive ($COMMAND_CENTER/logs) plus curated memory (every project key) — for a topic, person, file, decision, or "did we do this before". Use when asked to "recall X", "find past work on X", "what do I know about X", "이거 전에 했었나", "X 관련 뭐 했었지", "예전에 어떻게 풀었지". Complements the automatic SessionStart cross-folder context (recent-context.py) by letting you search on demand instead of only seeing the most recent sessions.
+description: Use when the user says recall/이거 전에 했었나/예전에 어떻게 했지/X 관련 뭐 했었지/과거 작업 찾아/find past work/did we do this before. Searches ALL folders' conversation archives ($COMMAND_CENTER/logs) + curated memory of every project key for a topic, person, file, or decision — on-demand complement to the automatic SessionStart recent-context.
 ---
 
 # /recall — 과거 작업 검색 (전 폴더·시점 무관)

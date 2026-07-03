@@ -1,6 +1,6 @@
 ---
 name: demo
-description: Record a polished, consistent-motion product demo (MP4 + GIF) of a web page using scripted headless browser automation. Captures retina PNG frames and assembles them at 30fps for crisp, smooth output — far better than hand-recorded screen capture. Use when the user wants a demo video / GIF / screencast for a launch (Reddit, X, GeekNews, etc.).
+description: Use when the user says 데모/demo/데모영상/GIF 만들어/screencast/시연영상, or wants a launch video for Reddit/X/GeekNews. Records a scripted headless-browser product demo of a web page → MP4 + GIF (retina PNG frames @30fps — far crisper than hand-recorded capture).
 ---
 
 # demo — scripted product demo recorder

@@ -1,6 +1,6 @@
 ---
 name: kickoff
-description: 프로젝트·기능 시작 단계의 Claude↔Codex 적대적 기획 회의(council). Claude가 계획 초안을 쓰면 Codex(GPT)가 코드를 안 본 차가운 상태로 레드팀하고, VERDICT가 APPROVED 될 때까지 수정·재검증을 반복한다. 모든 라운드가 세션에 보이고 $COMMAND_CENTER/council/<날짜>_<주제>/에 기록된다. Phase 0(짓기 전에 정의)을 단일 모델이 아니라 두 모델 회의로 수행할 때 사용. "kickoff", "기획 회의", "Codex랑 계획 검토", "adversarial plan review" 요청 시.
+description: Use when the user says kickoff/킥오프/기획 회의/기획서 검토/계획 레드팀/adversarial plan review/Codex랑 계획 검토/grill해, or a new project·feature needs Phase 0 framing before code. Claude drafts the plan, Codex red-teams it cold, REVISE loop until VERDICT: APPROVED — all rounds visible, logged to $COMMAND_CENTER/council/<날짜>_<주제>/.
 ---
 
 # kickoff — Claude × Codex 적대적 기획 회의

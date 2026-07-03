@@ -1,6 +1,6 @@
 ---
 name: techreport
-description: 기술보고서를 작성해 docx로 변환하고 GitHub 레포에 업로드하는 워크플로. 트러블슈팅 내역·변경로그·발전과정을 상세 타임스탬프(인간 기록용)로 정리. "기술보고서 만들어", "techreport", "이 작업 보고서로", "트러블슈팅 문서화", "보고서 docx로 깃허브에" 요청 시. 산출물 = report.md + report.docx + (선택) 새 private GitHub 레포 + 업로드.
+description: Use when the user says 기술보고서/techreport/보고서 만들어/트러블슈팅 문서화/이 작업 보고서로/보고서 docx로 깃허브에. Writes a timestamped technical report (troubleshooting·changelog·evolution) → report.md + report.docx + optional private GitHub repo upload (SessionEnd autopush marker).
 ---
 
 # /techreport — 기술보고서 → docx → GitHub
