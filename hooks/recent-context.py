@@ -133,6 +133,16 @@ def fmt_row(r):
             f"({human_size(r['size'])}) · log: `{disp(log, 80)}`")
 
 
+def model_hint(cwd: str) -> str:
+    """cwd 기반 모델 권고 1줄 — rules/routing.md 결정표와 동일 규칙(값 싼 결정론 nudge).
+    메타·시스템($COMMAND_CENTER·~/.claude) = Fable / 프로젝트 repo = Opus."""
+    p = os.path.normpath(cwd or "")
+    meta = any(p == r or p.startswith(r + os.sep)
+               for r in (str(HOME / "main"), str(HOME / ".claude")))
+    return ("**모델 권고:** 메타·시스템 작업 → Fable 권장 (`/model fable`)" if meta
+            else "**모델 권고:** 프로젝트 구현 → Opus 권장 (`/model opus`)")
+
+
 def main() -> int:
     event = read_event()
     cwd = event.get("cwd", os.getcwd())
@@ -189,6 +199,8 @@ def main() -> int:
     if other:
         lines += ["", "**다른 폴더 최근 (참고용 · 메타만):**"]
         lines += [fmt_row(r) for r in other]
+
+    lines += ["", model_hint(cwd)]  # 맨 끝 1줄 append — 기존 출력·로직 불변 (2026-07-03 routing)
 
     print("\n".join(lines))
     return 0

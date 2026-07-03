@@ -9,6 +9,8 @@ agent_transcript_path의 assistant 메시지에서 파생: model, usage 합산, 
 import json
 import os
 import sys
+import shutil
+import subprocess
 import time
 
 try:
@@ -98,6 +100,28 @@ try:
             f.writelines(tail)
     with open(log, "a") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+except Exception:
+    pass
+
+# WSL Windows toast — 긴 서브에이전트(>60s) 완료 시 데스크톱 알림(자리 비웠을 때, 2026-07-03 엔지니어 벤치마크).
+# best-effort·비차단(detached)·무음 실패. 끄기: CC_TOAST=0.
+try:
+    dur = rec.get("duration_ms") or 0
+    if os.environ.get("CC_TOAST", "1") != "0" and dur > 60_000 and shutil.which("powershell.exe"):
+        at = rec.get("agent_type", "agent")
+        secs = int(dur / 1000)
+        ps = (
+            "Add-Type -AssemblyName System.Windows.Forms;"
+            "$b=New-Object System.Windows.Forms.NotifyIcon;"
+            "$b.Icon=[System.Drawing.SystemIcons]::Information;$b.Visible=$true;"
+            f"$b.ShowBalloonTip(5000,'Claude Code','{at} 완료 ({secs}s)',"
+            "[System.Windows.Forms.ToolTipIcon]::Info);Start-Sleep -Seconds 5;$b.Dispose()"
+        )
+        subprocess.Popen(  # noqa — detached, 대기 안 함
+            ["powershell.exe", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
 except Exception:
     pass
 sys.exit(0)

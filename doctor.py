@@ -130,6 +130,20 @@ has_guardrail = any("guardrail" in h.get("command", "")
 print(f" {OK if has_guardrail else WARN} PreToolUse guardrail {'활성' if has_guardrail else '미설정'}")
 issues += 0 if has_guardrail else 1
 
+# 4b. sandbox 상태 (활성인데 deps 부재 = fail-closed로 전 Bash 차단 위험 — 무음 방지, 2026-07-03)
+import shutil
+sb = cfg.get("sandbox") or {}
+if sb.get("enabled"):
+    missing = [t for t in ("bwrap", "socat") if not shutil.which(t)]
+    if missing:
+        print(f" {WARN} sandbox 활성인데 deps 부재: {', '.join(missing)} — failIfUnavailable={sb.get('failIfUnavailable')} (true면 전 Bash 차단). `sudo apt-get install -y {' '.join(missing)}`")
+        issues += 1
+    else:
+        aw = (sb.get("filesystem") or {}).get("allowWrite", [])
+        print(f" {OK} sandbox 활성 (bwrap+socat 존재, allowWrite {len(aw)}경로, failIfUnavailable={sb.get('failIfUnavailable')})")
+else:
+    print(f" {INFO} sandbox 미설정 (블랭킷 Bash는 guardrail만 방어 — OS경계 원하면 sandbox.enabled)")
+
 # 5. 누적물
 section("accumulation")
 councils = list((CC / "council").glob("*/")) if (CC / "council").exists() else []
