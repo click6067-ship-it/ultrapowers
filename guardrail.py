@@ -90,7 +90,8 @@ def check(cmd, depth=0):
         i = 0
         while i < len(toks) and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', toks[i]):
             i += 1
-        if i < len(toks) and toks[i] in ("sudo", "env", "command", "time", "nice", "ionice", "xargs", "doas"):
+        # wrapper 다중 체인 반복 소비 (sudo env rm / time command rm 등 — 한 겹만 벗기면 우회됨, 2026-07-03 Codex A2)
+        while i < len(toks) and toks[i] in ("sudo", "env", "command", "time", "nice", "ionice", "xargs", "doas", "stdbuf", "setsid", "nohup"):
             i += 1
             while i < len(toks) and (re.match(r'^[A-Za-z_]\w*=', toks[i]) or toks[i].startswith('-')):
                 i += 1

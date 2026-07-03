@@ -10,22 +10,26 @@ define → research → plan → build → verify → review → ship → report
 
 Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so Claude Max and Codex Pro are recommended.
 
+> Built and hardened with **Claude Fable 5** (system work) + **OpenAI Codex (GPT-5.5)** in adversarial collaboration — a full-day cycle of audit → 2-round kickoff → fix → frontier benchmarking → weak-axis improvement → self-graded quality loop. Model split in practice: **Fable for meta/system work, Opus for project implementation.**
+
 ## What's inside
 
 | Component | What it does |
 |---|---|
-| `CLAUDE.md` | Always-loaded rules for Claude — Karpathy's 4 rules, the Phase 0 Gate, the work loop |
+| `CLAUDE.md` + `rules/` | Core rulebook + 5 auto-loaded topic rules (Phase 0 gate · work loop · session memory · pitfalls · design anti-slop) |
 | `AGENTS.md` | The same rules for Codex, so both models share one rulebook |
 | `/kickoff` | Two-model adversarial planning review, with **no-echo** scoring |
+| `/qualityloop` | Blind independent scoring of a finished deliverable — Codex + fresh Claude judge against a rubric, loop until it passes (max 3 rounds); deterministic checks first |
 | council logs | Every kickoff round saved to `council/<date>_<topic>/` — full transcript + the evolving plan |
 | phase-fixed modes | Planning & research run divergent (both models + subagents + web search); build, verify & review run convergent |
 | cross-session memory | Recent cross-folder context injected at session start; every turn archived to markdown |
-| 7 skills | `kickoff` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
-| 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification |
-| 5 hooks | session-start context · per-turn archive · session-end summary · subagent completion log · techreport auto-push (opt-in) |
-| guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master) and lets everything else run — autonomy preserved, deny-by-policy |
+| 8 skills | `kickoff` · `qualityloop` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
+| 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification (verify cap + model tiering) |
+| 6 hooks | session-start context · per-turn archive (async) · session-end summary · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
+| guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master incl. bare `-f` and `+refspec`, through nested `sudo/env/time` wrappers) and lets everything else run — 44 regression cases, deny-by-policy |
+| sloplint | deterministic (LLM-free) AI-slop design linter — 11 DOM/CSS tells; because an LLM judge shares the same training prior and can't see its own slop |
 | 3 subagents | `researcher` (multi-source web research + crawl) · `verifier` (single-claim adversarial check) · `redteam` (in-session critic) |
-| doctor + verify | `doctor.py` health check (auth · hooks · plugins · statusline · runtime versions; runs at install end) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
+| doctor + verify | `doctor.py` v2 health check (13 sections — auth · memory-mirror durability · doc-reality drift · dead permission rules · muted hooks · plugin-hooks inventory · rules entrypoint · fan-out caps · runtime versions) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
 | statusline | bottom bar — model · context% · dir · git branch · session cost |
 | Codex config | safe `~/.codex/config.toml` template (`workspace-write` + `on-request` + web search + context7/firecrawl MCP, key placeholder) |
 

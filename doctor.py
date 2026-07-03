@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """doctor.py — Claude Code 시스템 헬스체크 + 이식 후 검증 (observability).
 
-읽기 전용 진단. 손대지 않고 '지금 무엇이 어긋났나'만 보고한다.
+거의 읽기 전용 진단(예외: `.doctor-state.json` 스냅샷만 best-effort 갱신 — 쓰기 실패해도 진단 계속).
+손대지 않고 '지금 무엇이 어긋났나'만 보고한다.
 점검: codex auth · 메모리 미러 drift · hooks 무결성 · plugins · 누적물 · 런타임 버전.
 이식 가능: COMMAND_CENTER env(기본 ~/main)로 미러 위치 결정.
 
@@ -98,6 +99,22 @@ try:
 except Exception as e:
     print(f" {WARN} settings.json 파싱 실패: {e}")
     issues += 1
+
+# 3b. rules entrypoint 무결성 (CLAUDE.md가 참조하는 rules 파일이 실재하나 — 공개판 rules 누락류 차단, 2026-07-03 Codex B3)
+section("rules entrypoint")
+gclaude = HOME / ".claude/CLAUDE.md"
+rules_dir = HOME / ".claude/rules"
+if gclaude.exists():
+    import re as _re
+    txt = gclaude.read_text()
+    refd = set(_re.findall(r'rules/([a-z0-9-]+)\.md', txt))
+    present = {p.stem for p in rules_dir.glob("*.md")} if rules_dir.exists() else set()
+    missing = refd - present
+    if missing:
+        print(f" {WARN} CLAUDE.md가 참조하는 rules 부재: {', '.join(sorted(missing))}")
+        issues += 1
+    else:
+        print(f" {OK} rules {len(present)}개, CLAUDE.md 참조 {len(refd)}개 전부 실재")
 
 # 4. plugins / statusline / guardrail
 section("plugins / config")

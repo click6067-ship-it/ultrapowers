@@ -48,8 +48,9 @@ def main():
         git("reset", "-q", "--", "reports/.push-pending")  # 마커는 커밋 제외(커밋·삭제 시 repo dirty 방지)
         # reports/에 실제 staged 변경이 있을 때만 커밋(빈 커밋 방지).
         if git("diff", "--cached", "--quiet", "--", "reports").returncode != 0:
+            # pathspec 한정 커밋 — 훅 실행 전 이미 staged된 무관 파일을 휩쓸지 않음(2026-07-03 Codex 리뷰 A1).
             c = git("-c", f"user.email={EMAIL}", "-c", f"user.name={name}",
-                    "commit", "-m", "docs(report): auto techreport push (SessionEnd)")
+                    "commit", "-m", "docs(report): auto techreport push (SessionEnd)", "--", "reports")
             if c.returncode != 0:
                 hlog(f"ERROR commit 실패 — 마커 보존, 다음 세션 재시도: {' '.join(c.stderr.split())[:200]}")
                 return 0

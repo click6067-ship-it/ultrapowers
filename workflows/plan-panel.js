@@ -46,6 +46,7 @@ const reviewed = (await pipeline(
     { schema: REVIEW, label: `review:${a}`, phase: 'Review' },
   ).then((r) => ({ draft: d, review: r })),
 )).filter(Boolean)
+if (!reviewed.length) throw new Error('plan-panel: 모든 draft/review 실패 — 종합할 초안 없음 (빈 근거 계획 생성 방지)')
 const ranked = reviewed.sort((a, b) => (b.review.score || 0) - (a.review.score || 0))
 log(`best score: ${ranked[0] && ranked[0].review.score}`)
 

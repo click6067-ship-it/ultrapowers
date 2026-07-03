@@ -54,6 +54,9 @@ for (const x of all) {
   if (k && !seen.has(k)) { seen.add(k); uniq.push(x) }
 }
 const TOPN = 25  // stop-rule: 검증 fan-out 비용 상한 (council-research 35에이전트 교훈과 동일 — 1ede3a8)
+// severity 우선 정렬 후 cap — high/critical이 26번째로 밀려 미검증되는 것 방지 (2026-07-03 Codex A9)
+const sevRank = { critical: 0, high: 1, medium: 2, low: 3 }
+uniq.sort((a, b) => (sevRank[(a.severity || '').toLowerCase()] ?? 2) - (sevRank[(b.severity || '').toLowerCase()] ?? 2))
 const toVerify = uniq.slice(0, TOPN)
 log(`${uniq.length} unique findings, verifying top ${toVerify.length}` + (uniq.length > TOPN ? ` (${uniq.length - TOPN}건 미검증 pass-through)` : ''))
 
