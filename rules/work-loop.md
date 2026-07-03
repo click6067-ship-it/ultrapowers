@@ -14,7 +14,7 @@
 ## 모델 배분 (2026-07-03 maintainer 지시 — 토큰 통제)
 - **시스템 정비·개선·최신화(메타, ~/main·~/.claude 작업) = Fable** (`/model fable`).
 - **실제 프로젝트 작업(코딩·구현) = Opus** (`/model opus`). 세션 시작 시 작업 성격에 맞는 모델인지 확인하고, 아니면 사용자에게 `/model` 전환을 제안.
-- 서브에이전트 티어링은 별도(researcher=sonnet·verifier=haiku·redteam=opus·Explore=haiku — frontmatter가 정본).
+- 서브에이전트 티어링은 별도(researcher=sonnet·verifier=sonnet·redteam=opus·Explore=haiku — frontmatter가 정본).
 
 ## 완료선언 규칙 (증거 없으면 완료 아님)
 - **완료 증거는 transcript에 실물로** — 실제 명령·출력·exit code. 성공 *주장*은 증거가 아니다.
@@ -24,10 +24,10 @@
 ## 🤖 시스템 빠른 참조
 - **백본 = superpowers** (유일 — gstack 제거됨, 2026-05-27 평가): 규율 학파 — brainstorm→plan→TDD→verification, 자동발동. **기본은 superpowers로 일한다.**
 - **커스텀 스킬**: `/vcheck`(시각검증)·`/demo`(데모)·`/kickoff`(Claude↔Codex 적대 기획회의)·`/recall`·`/remember`·`/techreport`·`/spec-decompose`(마스터 기획서→child spec 분해).
-- **커스텀 서브에이전트**: `redteam`(opus·인세션 비평)·`researcher`(sonnet·웹조사)·`verifier`(haiku·단일주장 적대검증)·`Explore`(haiku 오버라이드 — 탐색 비용 방어).
+- **커스텀 서브에이전트**: `redteam`(opus·인세션 비평)·`researcher`(sonnet·웹조사)·`verifier`(sonnet·단일주장 적대검증)·`Explore`(haiku 오버라이드 — 탐색 비용 방어).
 - **저장 워크플로**: `council-research`(fan-out 리서치→주장 적대검증→인용종합)·`plan-panel`(다각도 blind plan→적대채점→종합)·`repo-audit`(shard→리뷰→검증). 전부 verify cap(25)+sonnet 티어링 내장.
 - **Codex** 크로스리뷰: codex 플러그인(`/codex:review`·`/codex:rescue`) + 직접 `codex exec`(kickoff). 핵심/엔진/데이터 코드.
 - **MCP**: context7=최신문서("use context7"), firecrawl=웹크롤·검색, vercel=배포. 셋 다 minimal 유지(공급망 공격면). 배포·시각검증은 vercel 플러그인·git/gh·`/vcheck`.
-- **Agent Teams**(experimental, 플래그 활성): 워커끼리 발견 공유·반박이 필요할 때만 — 결과만 필요하면 서브에이전트가 저렴. 파일럿 게이트: kickoff 대비 실측 우위(unique finding ≥1 · FP 비악화 · ≤2×토큰) 확인 전까지 기본 채택 아님.
+- **Agent Teams**(experimental, 플래그 활성): 워커끼리 발견 공유·반박이 필요할 때만 — 결과만 필요하면 서브에이전트가 저렴. 파일럿 게이트: kickoff 대비 실측 우위(unique finding ≥1 · FP 비악화 · ≤2×토큰) 확인 전까지 기본 채택 아님. 파일럿 프로토콜: 파일럿 1회 = 같은 brief를 kickoff vs Agent Teams로 A/B, 기록 필드 = {unique_useful_finding, false_positive, tokens, elapsed}, CPX root-cause·경쟁가설 디버깅에만. 기본 자동발동 금지.
 - **도구 큐레이션 규율**: 월 1회 `/insights`로 미사용·반복 패턴 점검. 3개월 미발동 도구 = 삭제 후보("만들었으니 유지" 금지). 스킬 description은 트리거 키워드-first("when, not what") — 발동은 키워드 매칭에 가깝다(실측).
 - 상세: `~/main/system/SYSTEM.md` (단일 정본 문서).

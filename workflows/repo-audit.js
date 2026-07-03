@@ -16,7 +16,7 @@ const FINDINGS = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { file: { type: 'string' }, issue: { type: 'string' }, severity: { type: 'string' } },
+        properties: { file: { type: 'string' }, issue: { type: 'string' }, severity: { type: 'string' }, line: { type: 'number' }, evidence: { type: 'string' }, confidence: { type: 'string' } },
         required: ['file', 'issue'],
       },
     },
@@ -43,7 +43,7 @@ log(`${files.length} files to review`)
 phase('Review')
 const reviewed = await pipeline(
   files,
-  (f) => agent(`Review the file "${f}" for: ${focus}. Return concrete findings (file + issue + severity). If clean, return empty findings.`,
+  (f) => agent(`Review the file "${f}" for: ${focus}. Return concrete findings (file + issue + severity). For each finding include file:line (line number) and the code evidence (the actual snippet or behavior that proves the issue). If clean, return empty findings.`,
     { schema: FINDINGS, label: 'review', phase: 'Review' }),
 )
 const all = reviewed.filter(Boolean).flatMap((r) => r.findings || [])
@@ -62,7 +62,7 @@ log(`${uniq.length} unique findings, verifying top ${toVerify.length}` + (uniq.l
 
 phase('Verify')
 const verdicts = (await parallel(toVerify.map((x) => () =>
-  agent(`Adversarially verify this finding — is it REAL? Try to refute it. Default real=false if unsure.\nFile: ${x.file}\nIssue: ${x.issue}`,
+  agent(`Adversarially verify this finding — is it REAL? Try to refute it. Default real=false if unsure.\nFile: ${x.file}${x.line != null ? `\nLine: ${x.line}` : ''}\nIssue: ${x.issue}${x.evidence ? `\nEvidence: ${x.evidence}` : ''}\nRead the file yourself and refute or confirm with a concrete file:line reference.`,
     { schema: VERDICT, label: 'verify', phase: 'Verify', model: 'sonnet' }).then((v) => ({ ...x, ...v })),
 ))).filter(Boolean)
 const confirmed = verdicts.filter((v) => v.real)

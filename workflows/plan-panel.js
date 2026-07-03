@@ -53,9 +53,16 @@ log(`best score: ${ranked[0] && ranked[0].review.score}`)
 phase('Synthesize')
 const final = await agent(
   `Synthesize ONE best plan for the task. Base it on the highest-scored draft, graft the strongest ideas from the others, ` +
-  `and resolve the failure modes the reviews raised. Your final text IS the plan artifact returned to the caller — ` +
+  `and resolve the failure modes the reviews raised. State explicitly in the final plan which draft ideas were chosen, rejected, and deferred (chosen/rejected/deferred). ` +
+  `Your final text IS the plan artifact returned to the caller — ` +
   `no greetings or meta commentary, start directly with the plan.\nTask: ${task}\nRanked drafts + reviews:\n` +
-  ranked.map((r) => `[score ${r.review.score}] ${r.draft.approach} — failures: ${(r.review.failures || []).join('; ')}`).join('\n'),
+  ranked.map((r) =>
+    `[score ${r.review.score}] approach: ${r.draft.approach}\n` +
+    `  steps: ${(r.draft.steps || []).join(' | ')}\n` +
+    `  risks: ${(r.draft.risks || []).join('; ')}\n` +
+    `  cut: ${r.draft.cut || '-'}\n` +
+    `  failures: ${(r.review.failures || []).join('; ')}`
+  ).join('\n'),
   { label: 'synthesize', phase: 'Synthesize' },
 )
 return final
