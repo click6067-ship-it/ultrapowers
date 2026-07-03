@@ -28,7 +28,7 @@ Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so C
 | 6 hooks | session-start context · per-turn archive (async) · session-end summary · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
 | guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master incl. bare `-f` and `+refspec`, through nested `sudo/env/time` wrappers) and lets everything else run — 44 regression cases, deny-by-policy |
 | sloplint | deterministic (LLM-free) AI-slop design linter — 11 DOM/CSS tells; because an LLM judge shares the same training prior and can't see its own slop |
-| 3 subagents | `researcher` (multi-source web research + crawl) · `verifier` (single-claim adversarial check) · `redteam` (in-session critic) |
+| 5 subagents | `researcher` (sonnet · web research + crawl) · `verifier` (sonnet · single-claim adversarial check) · `redteam` (opus · in-session critic) · `judge` (sonnet · rubric scoring for qualityloop) · `Explore` (haiku · cheap search) — model-tiered by cost |
 | doctor + verify | `doctor.py` v2 health check (13 sections — auth · memory-mirror durability · doc-reality drift · dead permission rules · muted hooks · plugin-hooks inventory · rules entrypoint · fan-out caps · runtime versions) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
 | statusline | bottom bar — model · context% · dir · git branch · session cost |
 | Codex config | safe `~/.codex/config.toml` template (`workspace-write` + `on-request` + web search + context7/firecrawl MCP, key placeholder) |
@@ -79,6 +79,7 @@ A session-start hook injects recent cross-folder context (pointers + links to fu
 | Skill | What it does |
 |---|---|
 | `kickoff` | Two-model adversarial planning review (above) |
+| `qualityloop` | Blind independent scoring of a finished deliverable — Codex + a fresh Claude `judge` grade it against a rubric (per-dimension justification, defects by severity), deterministic checks first, loop until it passes both (max 3 rounds) |
 | `recall` | Search past work across all folders — conversation archive (`logs/`) + curated memory |
 | `remember` | Save one durable fact to curated cross-session memory (typed: user · feedback · project · reference) |
 | `vcheck` | Headless visual check of a URL — desktop + mobile screenshots, horizontal-overflow + console-error report |
@@ -108,7 +109,7 @@ Three multi-agent pipelines, installed to `~/.claude/workflows/` and invoked lik
 | `recent-context.py` | SessionStart | Injects recent cross-folder session pointers (slug · time · session id · log path) — pointers, not prompt text |
 | `export-sessions.py` | Stop | Converts JSONL transcripts to markdown logs (incremental, with a lock + credential redaction) |
 | `session-end-summary.py` | SessionEnd | Writes a one-session summary (first/last prompt, tool-call count, duration, end reason) |
-| `subagent-log.py` | SubagentStop | Appends one line per completed subagent (timestamp · agent type · id) to `logs/subagents.log` in the command center — cheap observability for fan-out workflows |
+| `subagent-log.py` | SubagentStop | Appends one JSONL line per completed subagent to `logs/subagents.jsonl` — agent type · id + model, token usage & duration derived from the agent transcript (deduped by message id). Cost observability so "was this expensive run worth it?" is reproducible |
 | `techreport-autopush.py` | SessionEnd | Opt-in (off in the default template): when a `.push-pending` marker exists, commits and pushes `reports/` from the command center |
 
 ## A typical run
@@ -158,9 +159,9 @@ The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `s
 |---|---|
 | `CLAUDE.md` · `AGENTS.md` | One shared rulebook — for Claude and for Codex |
 | `skills/` | The 7 skills (`spec-decompose` also ships `spec_doctor.py` + templates) |
-| `hooks/` | The 5 session hooks |
+| `hooks/` | The 6 session hooks |
 | `tools/headless/` | `vcheck` · `demo` (Playwright + ffmpeg; Chromium runs `--no-sandbox`, so point them at trusted URLs; WSL needs chromium libs, installed separately) |
-| `agents/` | 3 subagents — `researcher` · `verifier` · `redteam` |
+| `agents/` | 5 subagents — `researcher` · `verifier` · `redteam` · `judge` · `Explore` |
 | `workflows/` | 3 workflows — `council-research` · `plan-panel` · `repo-audit` |
 | `guardrail.py` · `doctor.py` · `verify.sh` · `statusline.py` | PreToolUse guardrail · health check · verification matrix · status bar |
 | `codex.config.template.toml` | safe Codex config (web search + MCP, no danger bypass, key placeholder) |
