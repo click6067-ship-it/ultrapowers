@@ -31,6 +31,16 @@ def read_event() -> dict:
         return {}
 
 
+# 하니스 주입 텍스트(가짜 user 턴) — 프롬프트 캡처에서 제외 (2026-07-03 감사: 태그가 '첫 프롬프트'로 찍히던 버그)
+_HARNESS_NOISE = ("<local-command-caveat>", "<command-name>", "<local-command-stdout>",
+                  "<task-notification>", "<system-reminder>", "Caveat: The messages below")
+
+
+def is_harness_noise(txt: str) -> bool:
+    head = txt.lstrip()[:60]
+    return any(head.startswith(m) for m in _HARNESS_NOISE)
+
+
 def parse_transcript(path):
     """(first_user, last_user, tool_calls, msg_count, first_ts, last_ts)."""
     first = last = first_ts = last_ts = None
@@ -61,7 +71,7 @@ def parse_transcript(path):
                                    if isinstance(b, dict) and b.get("type") == "text").strip()
                 else:
                     txt = str(c).strip()
-                if txt:
+                if txt and not is_harness_noise(txt):
                     if first is None:
                         first = txt
                     last = txt

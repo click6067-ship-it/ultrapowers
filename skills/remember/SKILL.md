@@ -30,14 +30,20 @@ description: Save one durable fact to cross-session curated memory. Use when ask
    <사실. feedback/project면 **Why:** 와 **How to apply:** 줄 추가. 관련 메모리는 [[slug]]로 링크.>
    ```
 5. **인덱스 갱신**: 같은 memory 디렉토리의 `MEMORY.md`에 한 줄 추가(`- [제목](파일.md) — 후크`). 없으면 생성.
-6. **git 미러 + 커밋**:
+6. **git 미러 + 커밋** (선택 — command-center에 sync.sh와 git repo가 있을 때만. 없으면 조용히 넘어가지 말고 skip 사유를 한 줄로 알린다):
    ```bash
-   bash $COMMAND_CENTER/system/dotclaude/sync.sh >/dev/null
-   git -C $COMMAND_CENTER log -3 --format=%ae        # ← author 이메일 확인(반복 함정)
-   git -C $COMMAND_CENTER add -A && git -C $COMMAND_CENTER -c user.email="<확인된 이메일>" commit -m "mem: <요약>"
+   if [ -f "$COMMAND_CENTER/system/dotclaude/sync.sh" ] && [ -d "$COMMAND_CENTER/.git" ]; then
+     bash "$COMMAND_CENTER/system/dotclaude/sync.sh" >/dev/null
+     git -C "$COMMAND_CENTER" log -3 --format=%ae      # ← author 이메일 확인(반복 함정)
+     git -C "$COMMAND_CENTER" add system/memory-snapshot \
+       && git -C "$COMMAND_CENTER" -c user.email="<확인된 이메일>" commit -m "mem: <요약>"
+   else
+     echo "ℹ️ git 미러 skip: $COMMAND_CENTER 에 sync.sh/git repo 없음 — 메모리는 ~/.claude/projects/<키>/memory/ 에 저장 완료"
+   fi
    ```
 
 ## 규칙 (FitLLM 정확도·메모리 규율)
+- **크리덴셜(암호·토큰·API키) 절대 저장 금지** — 메모리는 git 미러를 타고 원격 repo에 실린다(2026-07-03 감사 C15: CPX 설문 암호가 GitHub에 push된 사고). 대신 "암호는 <프로젝트> .env 참조" 포인터만.
 - **코드·구조·git이 이미 기록하는 건 저장 안 함** — 비자명한 것만. 시킨 게 그런 거면 "무엇이 비자명했는지"를 물어 그걸 저장.
 - **출처 없는 하드웨어/성능 숫자 저장 금지** (프로젝트 정확도 규율 — 출처 URL 동반).
 - 틀린 것으로 판명된 메모리는 갱신하지 말고 **삭제**.

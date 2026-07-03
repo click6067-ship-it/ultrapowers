@@ -21,7 +21,8 @@ Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so C
 | phase-fixed modes | Planning & research run divergent (both models + subagents + web search); build, verify & review run convergent |
 | cross-session memory | Recent cross-folder context injected at session start; every turn archived to markdown |
 | 7 skills | `kickoff` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
-| 4 hooks | session-start context · per-turn archive · session-end summary · techreport auto-push (opt-in) |
+| 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification |
+| 5 hooks | session-start context · per-turn archive · session-end summary · subagent completion log · techreport auto-push (opt-in) |
 | guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master) and lets everything else run — autonomy preserved, deny-by-policy |
 | 3 subagents | `researcher` (multi-source web research + crawl) · `verifier` (single-claim adversarial check) · `redteam` (in-session critic) |
 | doctor + verify | `doctor.py` health check (auth · hooks · plugins · statusline · runtime versions; runs at install end) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
@@ -86,6 +87,16 @@ node ~/.claude/tools/headless/vcheck.mjs <url> [outdir]                 # deskto
 node ~/.claude/tools/headless/demo.mjs   <url> [scenario.mjs|-] [outdir] # demo.mp4 + demo.gif
 ```
 
+## Workflows
+
+Three multi-agent pipelines, installed to `~/.claude/workflows/` and invoked like a skill with args:
+
+| Workflow | What it does |
+|---|---|
+| `council-research` | Multi-angle research fan-out → adversarial verification of each claim (refute attempts) → synthesis citing only surviving claims. Usage: `/council-research "<research question>"` |
+| `plan-panel` | Blind parallel plan drafts from different angles → adversarial review + scoring → the best plan synthesized with the other drafts' strengths. Usage: `/plan-panel "<task>"` |
+| `repo-audit` | Shards target files → parallel review → dedupe → adversarial verification of findings (bug/security/quality sweep). Usage: `/repo-audit <path>` |
+
 ## Hooks
 
 | Hook | Runs on | What it does |
@@ -93,6 +104,7 @@ node ~/.claude/tools/headless/demo.mjs   <url> [scenario.mjs|-] [outdir] # demo.
 | `recent-context.py` | SessionStart | Injects recent cross-folder session pointers (slug · time · session id · log path) — pointers, not prompt text |
 | `export-sessions.py` | Stop | Converts JSONL transcripts to markdown logs (incremental, with a lock + credential redaction) |
 | `session-end-summary.py` | SessionEnd | Writes a one-session summary (first/last prompt, tool-call count, duration, end reason) |
+| `subagent-log.py` | SubagentStop | Appends one line per completed subagent (timestamp · agent type · id) to `logs/subagents.log` in the command center — cheap observability for fan-out workflows |
 | `techreport-autopush.py` | SessionEnd | Opt-in (off in the default template): when a `.push-pending` marker exists, commits and pushes `reports/` from the command center |
 
 ## A typical run
@@ -134,7 +146,7 @@ claude mcp add -s user --env FIRECRAWL_API_KEY=<key> firecrawl -- npx -y firecra
 # 5. Log in: claude (OAuth) · codex login · vercel via /mcp
 ```
 
-The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `skills/` · `hooks/` · `tools/headless/` · `agents/` · `statusline.py` · `guardrail.py` · `verify.sh` · `doctor.py` into `~/.claude`, plus a safe `~/.codex/config.toml`, with paths substituted. If a `settings.json` already exists it is **merged idempotently** (env · hooks · plugins · statusLine; needs `jq`); otherwise it is created from the template (`permissions.allow: []` — opt-in, see `settings.local.example.json`). It then runs `doctor.py` to verify the install.
+The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `skills/` · `hooks/` · `tools/headless/` · `agents/` · `workflows/` · `statusline.py` · `guardrail.py` · `verify.sh` · `doctor.py` into `~/.claude`, plus a safe `~/.codex/config.toml`, with paths substituted. If a `settings.json` already exists it is **merged idempotently** (env · hooks · plugins · statusLine; needs `jq`); otherwise it is created from the template (`permissions.allow: []` — opt-in, see `settings.local.example.json`). It then runs `doctor.py` to verify the install.
 
 ## Layout
 
@@ -142,9 +154,10 @@ The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `s
 |---|---|
 | `CLAUDE.md` · `AGENTS.md` | One shared rulebook — for Claude and for Codex |
 | `skills/` | The 7 skills (`spec-decompose` also ships `spec_doctor.py` + templates) |
-| `hooks/` | The 4 session hooks |
+| `hooks/` | The 5 session hooks |
 | `tools/headless/` | `vcheck` · `demo` (Playwright + ffmpeg; Chromium runs `--no-sandbox`, so point them at trusted URLs; WSL needs chromium libs, installed separately) |
 | `agents/` | 3 subagents — `researcher` · `verifier` · `redteam` |
+| `workflows/` | 3 workflows — `council-research` · `plan-panel` · `repo-audit` |
 | `guardrail.py` · `doctor.py` · `verify.sh` · `statusline.py` | PreToolUse guardrail · health check · verification matrix · status bar |
 | `codex.config.template.toml` | safe Codex config (web search + MCP, no danger bypass, key placeholder) |
 | `install.sh` | One-shot, location-independent installer (idempotent settings merge + post-install doctor) |

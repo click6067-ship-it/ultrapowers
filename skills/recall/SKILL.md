@@ -20,7 +20,7 @@ description: Search past work across ALL folders/projects — the full conversat
    echo "== 대화 아카이브(세션, 최신순) =="
    grep -rails -- "$Q" $COMMAND_CENTER/logs/*.md 2>/dev/null | xargs -r ls -t 2>/dev/null
    ```
-   (아카이브가 오래됐을 수 있으면 먼저 `python3 $COMMAND_CENTER/system/export-sessions.py >/dev/null` 한 번.)
+   (아카이브가 오래됐을 수 있으면 먼저 `python3 ~/.claude/hooks/export-sessions.py >/dev/null` 한 번.)
 2. 결과를 묶어 제시:
    - **메모리 사실** — 매칭된 memory 파일을 Read 해 관련 줄만 인용(출처 파일명 명시).
    - **세션** — 최신순으로 `logs/<파일>.md` 나열 + 각 세션 1줄 설명. 상위 1–2개는 매칭 부분을 Read로 확인해 요약.

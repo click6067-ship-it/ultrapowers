@@ -29,7 +29,7 @@ if [ -d "$SRC/skills/spec-decompose" ]; then
 fi
 
 echo "▶ hooks → ~/.claude/hooks/ (위치 독립)"
-for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py; do
+for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py subagent-log.py; do
   if [ -f "$SRC/hooks/$h" ]; then cp "$SRC/hooks/$h" "$DST/hooks/$h"; chmod +x "$DST/hooks/$h"; fi
 done
 
@@ -63,8 +63,11 @@ if [ ! -f "$DST/settings.json" ]; then
   echo "  신규 생성(경로 치환). permissions.allow=[] — 편의 권한은 settings.local.example.json 참고해 본인 opt-in."
 elif command -v jq >/dev/null 2>&1; then
   backup "$DST/settings.json"
+  # env 머지: COMMAND_CENTER는 항상 존재 보장(기존 값 우선, 없으면 template=이번 설치의 $CC).
+  #           LD_LIBRARY_PATH는 기존 값 보존(없을 때만 template) — 무조건 덮어쓰면 사용자 커스텀 파괴.
   if jq -s '.[0] as $live | .[1] as $tmpl | $live
-      | .env = ((.env // {}) + {LD_LIBRARY_PATH: $tmpl.env.LD_LIBRARY_PATH})
+      | .env = ((.env // {}) + {COMMAND_CENTER: (.env.COMMAND_CENTER // $tmpl.env.COMMAND_CENTER),
+                                LD_LIBRARY_PATH: (.env.LD_LIBRARY_PATH // $tmpl.env.LD_LIBRARY_PATH)})
       | .enabledPlugins = ($tmpl.enabledPlugins + ($live.enabledPlugins // {}))
       | .extraKnownMarketplaces = (($tmpl.extraKnownMarketplaces // {}) + ($live.extraKnownMarketplaces // {}))
       | .statusLine = ($live.statusLine // $tmpl.statusLine)
@@ -76,6 +79,7 @@ elif command -v jq >/dev/null 2>&1; then
     ' "$DST/settings.json" "$_SUBST" > "$DST/settings.json.new"; then
     mv "$DST/settings.json.new" "$DST/settings.json"
     echo "  기존 settings.json 머지(env·hooks·plugins·statusLine, matcher 보존, idempotent). allow·plugin-disable 보존. 백업=.bak.*"
+    echo "  env: COMMAND_CENTER 보장(기존 값 우선, 없으면 $CC) · LD_LIBRARY_PATH 기존 값 보존"
   else
     rm -f "$DST/settings.json.new"; cp "$_SUBST" "$DST/settings.deploy-template.json"
     echo "  ⚠️ jq 머지 실패 — 원본 유지(백업=.bak.*), 참고: $DST/settings.deploy-template.json"

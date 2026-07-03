@@ -17,7 +17,7 @@ const FINDINGS = {
       items: {
         type: 'object',
         properties: { file: { type: 'string' }, issue: { type: 'string' }, severity: { type: 'string' } },
-        required: ['issue'],
+        required: ['file', 'issue'],
       },
     },
   },
@@ -53,12 +53,14 @@ for (const x of all) {
   const k = ((x.file || '') + (x.issue || '')).slice(0, 100).toLowerCase()
   if (k && !seen.has(k)) { seen.add(k); uniq.push(x) }
 }
-log(`${uniq.length} unique findings to verify`)
+const TOPN = 25  // stop-rule: 검증 fan-out 비용 상한 (council-research 35에이전트 교훈과 동일 — 1ede3a8)
+const toVerify = uniq.slice(0, TOPN)
+log(`${uniq.length} unique findings, verifying top ${toVerify.length}` + (uniq.length > TOPN ? ` (${uniq.length - TOPN}건 미검증 pass-through)` : ''))
 
 phase('Verify')
-const verdicts = (await parallel(uniq.map((x) => () =>
+const verdicts = (await parallel(toVerify.map((x) => () =>
   agent(`Adversarially verify this finding — is it REAL? Try to refute it. Default real=false if unsure.\nFile: ${x.file}\nIssue: ${x.issue}`,
-    { schema: VERDICT, label: 'verify', phase: 'Verify' }).then((v) => ({ ...x, ...v })),
+    { schema: VERDICT, label: 'verify', phase: 'Verify', model: 'sonnet' }).then((v) => ({ ...x, ...v })),
 ))).filter(Boolean)
 const confirmed = verdicts.filter((v) => v.real)
-return { confirmed_count: confirmed.length, total_findings: uniq.length, confirmed }
+return { confirmed_count: confirmed.length, total_findings: uniq.length, unverified_overflow: uniq.slice(TOPN), confirmed }

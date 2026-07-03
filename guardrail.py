@@ -6,7 +6,12 @@
 - 단·롱 플래그 모두(`-rf`, `--recursive --force`), 확장 홈/시스템 루트 타깃 인식
 - `bash -c '...'` 내부 재귀 검사(우회 차단)
 guardrail은 *방어선이지 샌드박스가 아니다* — 정상작업을 막지 않는 선에서 최악만 거른다.
-stdin: PreToolUse JSON {tool_input:{command}}. 차단은 ~/main/logs/guardrail.log 기록.
+stdin: PreToolUse JSON {tool_input:{command}}. 차단은 $COMMAND_CENTER/logs/guardrail.log 기록.
+
+실패 모드 비대칭 (문서화 — 2026-07-03 감사):
+- 스크립트 *내부* 크래시 → exit 1 (PreToolUse 비차단 에러) = fail-open: 명령은 통과.
+- 스크립트 *파일 부재* → python3가 exit 2 = PreToolUse 차단 = fail-closed: 모든 Bash 차단.
+  (이식 시 경로 깨지면 전 Bash가 막히는 쪽으로 실패 — 안전하지만 시끄러움. doctor의 hooks 체크가 탐지.)
 """
 import json
 import os
@@ -52,8 +57,14 @@ def has_force(args):
 
 def block(why):
     try:
-        log = os.path.expanduser("~/main/logs/guardrail.log")
+        cc = os.environ.get("COMMAND_CENTER") or os.path.join(HOMEDIR, "main")
+        log = os.path.join(cc, "logs", "guardrail.log")
         os.makedirs(os.path.dirname(log), exist_ok=True)
+        if os.path.exists(log) and os.path.getsize(log) > 512_000:  # 로테이션: 최근 2000줄만 보존
+            with open(log) as f:
+                tail = f.readlines()[-2000:]
+            with open(log, "w") as f:
+                f.writelines(tail)
         with open(log, "a") as f:
             f.write(f"{int(time.time())}\t{why}\t{_cmd_for_log}\n")
     except Exception:
@@ -101,10 +112,18 @@ def check(cmd, depth=0):
         elif c0 == "chmod" and has_recursive(args) and any(t in ("777", "0777") for t in args) \
                 and any(is_danger_target(t) for t in args):
             block("chmod -R 777 홈/루트")
-        elif c0 == "git" and "push" in args \
-                and re.search(r'--force\b|--force-with-lease\b|(^|\s)-f(\s|$)', seg) \
-                and re.search(r'\b(main|master)\b', seg):
-            block("main/master force-push")
+        elif c0 == "git" and "push" in args:
+            # +refspec force 형태 (git push origin +main) — force 플래그 없이 강제 푸시
+            if any(re.match(r'^\+\S*\b(main|master)\b', t) for t in args):
+                block("main/master +refspec force-push")
+            if re.search(r'--force(-with-lease|-if-includes)?\b|(^|\s)-f(\s|$)', seg):
+                if re.search(r'\b(main|master)\b', seg):
+                    block("main/master force-push")
+                # bare force-push (브랜치 무명시) — 현재 브랜치가 main/master일 수 있어 보호 우회 구멍.
+                # remote+refspec 둘 다 명시한 force만 통과 (피처 브랜치 force는 명시로 가능).
+                rest = [t for t in args[args.index("push") + 1:] if not t.startswith("-")]
+                if len(rest) < 2:
+                    block("bare force-push (원격·브랜치 명시 없이 -f — main/master 보호 우회 가능)")
     if re.search(r':\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:', cmd):
         block("fork bomb")
 

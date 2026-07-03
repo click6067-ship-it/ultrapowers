@@ -20,7 +20,8 @@ if (!url) { console.error('usage: node demo.mjs <url> [scenario.mjs|-] [outdir]'
 
 const W = 1100, H = 760, FPS = 30;
 const FR = path.join(OUT, 'frames');
-fs.rmSync(OUT, { recursive: true, force: true });
+// outdir 자체는 절대 삭제하지 않는다 — 기존 디렉토리를 넘겨도 안전. 프레임 폴더만 재생성(이전 실행 잔여 프레임 오염 방지).
+fs.rmSync(FR, { recursive: true, force: true });
 fs.mkdirSync(FR, { recursive: true });
 const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
 

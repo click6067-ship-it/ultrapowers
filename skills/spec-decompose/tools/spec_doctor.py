@@ -38,6 +38,12 @@ def parse_frontmatter(text):
         # strip inline comment (but not inside [...] list or quoted string)
         if val and not val.startswith('[') and not val.startswith('"') and not val.startswith("'"):
             val = val.split('#', 1)[0].strip()
+        elif val.startswith('['):
+            # 닫는 ] 뒤 인라인 주석 제거 — "[]  # 주석"이 비어있지 않은 str로 오파싱돼
+            # ready-leaf 게이트(blocking_questions 비어야 통과)가 조용히 무력화되는 버그 방지 (2026-07-03 감사 C6)
+            rb = val.rfind(']')
+            if rb != -1 and val[rb + 1:].lstrip().startswith('#'):
+                val = val[:rb + 1].strip()
         while stack and stack[-1][0] >= indent:
             stack.pop()
         parent = stack[-1][1]

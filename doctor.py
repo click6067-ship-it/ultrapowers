@@ -61,7 +61,9 @@ section("memory mirror drift")
 canon = HOME / ".claude/projects"
 mirror = CC / "system/memory-snapshot"
 drift = 0
-if canon.exists():
+if not mirror.exists():
+    print(f" {INFO} 미러 없음: {mirror} — drift 점검 skip (memory-snapshot 미러 미사용 설치에선 정상)")
+elif canon.exists():
     for proj in sorted(canon.glob("*/memory")):
         key = proj.parent.name
         cn, cm = mem_stat(proj)
@@ -74,7 +76,7 @@ if canon.exists():
 if drift:
     print(f" {WARN} {drift}개 프로젝트 미러 drift -> sync 필요")
     issues += drift
-else:
+elif mirror.exists():
     print(f" {OK} 메모리 미러 동기")
 
 # 3. hooks 무결성 (설정된 훅 스크립트가 실제 존재하나)

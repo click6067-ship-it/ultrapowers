@@ -44,6 +44,17 @@
         ]
       }
     ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __CLAUDE__/hooks/subagent-log.py"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "matcher": "",

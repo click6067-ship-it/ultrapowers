@@ -20,8 +20,8 @@ description: 프로젝트·기능 시작 단계의 Claude↔Codex 적대적 기�
 ## 언제 쓰나 — 모드 (v2, 2026-05-31)
 **모드 분리** (kickoff은 직렬 적대 핑퐁 — 그 한계는 [§Round 0]):
 - **kickoff 단독** — 기능 시작, plan이 있고 주 리스크가 *구현 스코프*일 때.
-- **judge-panel 단독**(격리 병렬 발산→수렴) — 감사·wrap-up 채점·"이 프로젝트 정직한가" thesis 스트레스.
-- **둘 다** — 피벗·고비용 빌드·외부/시장/연구 주장·안전/금융/법 리스크·첫 frame이 의심스러울 때: **judge-panel 먼저**(blind 공격질문) → **kickoff 나중**(plan hardening).
+- **plan-panel 단독**(격리 병렬 발산→수렴 — 저장 워크플로 `~/.claude/workflows/plan-panel.js`, Workflow name='plan-panel'+args=task로 발동) — 감사·wrap-up 채점·"이 프로젝트 정직한가" thesis 스트레스.
+- **둘 다** — 피벗·고비용 빌드·외부/시장/연구 주장·안전/금융/법 리스크·첫 frame이 의심스러울 때: **plan-panel 먼저**(blind 병렬 초안+적대 채점) → **kickoff 나중**(plan hardening).
 
 **Round 0는 *항상* 발동** (maintainer 결정 — "정의·research·plan은 무조건 풀파워, Tier 판정 X"): kickoff을 *연다는 것* 자체가 이미 풀파워 가치가 있는 중요 작업이라는 뜻이다. 그러니 Tier로 깎지 않고 **kickoff을 열면 Round 0부터 무조건** 돈다. (codex는 잡일 과적을 우려해 Tier 게이팅을 권고했으나 — 명백한 1줄 잡일은 *애초에 kickoff·Phase 0 Gate를 스킵*하므로 과적이 아니다. 즉 잡일을 kickoff에 안 올리는 것으로 해소.)
 
@@ -63,7 +63,7 @@ EOF
 cat "$CDIR/plan.md")" < /dev/null
 ```
 > ⚠️ **`< /dev/null` 필수**(2026-05-27 dogfooding 발견): 프롬프트를 인자로 주면서 stdin을 안 닫으면 codex가 "Reading additional input from stdin..."로 **무한 대기→타임아웃**(특히 비-tty/백그라운드 실행). 항상 stdin을 명시(`< /dev/null` 또는 `< 파일`)할 것.
-> gstack 사용자는 `codex challenge`로 대체 가능(같은 엔진). 2라운드부터는 `codex exec resume <session-id>`로 **같은 Codex 세션을 이어** Codex가 "지적이 실제로 반영됐는지" 검증하게 한다. (1라운드 출력 끝의 session id를 기록해 둔다.)
+> 2라운드부터는 `codex exec [글로벌 플래그] resume <session-id> "<프롬프트>"`로 **같은 Codex 세션을 이어** Codex가 "지적이 실제로 반영됐는지" 검증하게 한다. (1라운드 출력의 session id 기록. ⚠️ 글로벌 플래그 `-s`/`-c`는 `resume` **앞에** 둘 것 — 뒤에 두면 `unexpected argument` 에러, 2026-07-03 실측.)
 
 **b) Codex 응답 전문을 세션에 출력**하고 `$CDIR/council.md`에 `## Round N — Codex` 로 추가.
 

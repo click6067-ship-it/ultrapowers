@@ -34,7 +34,8 @@ const VERDICT = {
 
 const question = (typeof args === 'string' && args) ? args
   : (args && args.question) ? args.question
-  : 'No question provided (pass args)'
+  : null
+if (!question) throw new Error('council-research: args로 리서치 질문(문자열)을 넘겨야 함 — 무입력 fan-out 방지')
 
 phase('Fan-out')
 const ANGLES = ['공식 문서·1차 출처', '최신 동향·릴리스(최근 1달)', '비판·실패·한계', '대안·경쟁 비교']
@@ -63,19 +64,27 @@ phase('Verify')
 const verdicts = (await parallel(toVerify.map((c) => () =>
   agent(
     `Adversarially verify this claim — TRY TO REFUTE it with independent sources. ` +
-    `Default holds=false if you cannot confirm.\nClaim: ${c.claim}\nGiven source: ${c.source || '(none)'}`,
-    { schema: VERDICT, label: 'verify', phase: 'Verify' },
-  ),
+    `Default holds=false if you cannot confirm. Include verifying source URLs in "evidence".\n` +
+    `Claim: ${c.claim}\nGiven source: ${c.source || '(none)'}`,
+    { schema: VERDICT, label: 'verify', phase: 'Verify', model: 'sonnet' },  // 최대 fan-out 구간 비용 티어링
+  ).then((v) => ({ ...v, source: c.source || '' })),  // 원 출처 URL 보존 — 무인용 종합 방지
 ))).filter(Boolean)
 const survived = verdicts.filter((v) => v.holds)
 log(`${survived.length}/${verdicts.length} claims survived adversarial verification`)
 
+if (!survived.length) {
+  // 생존 0건이면 종합 금지 — 환각 리포트를 '검증 통과'로 반환하지 않는다
+  log('생존 주장 0건 — 종합 스킵')
+  return { report: null, note: 'no claims survived adversarial verification', claims_found: claims.length, verified: verdicts.length }
+}
+
 phase('Synthesize')
 const report = await agent(
   `Write a cited report answering the question, using ONLY these verified claims. ` +
-  `Mark residual uncertainty explicitly. End with a "Sources" list.\n` +
+  `Mark residual uncertainty explicitly. End with a "Sources" list built from the claim sources/evidence URLs. ` +
+  `Your final text IS the report artifact returned to the caller — no greetings or meta commentary.\n` +
   `Question: ${question}\nVerified claims:\n` +
-  survived.map((v) => `- ${v.claim} [${v.evidence || ''}]`).join('\n'),
+  survived.map((v) => `- ${v.claim} [evidence: ${v.evidence || ''}] [source: ${v.source}]`).join('\n'),
   { label: 'synthesize', phase: 'Synthesize' },
 )
 return report

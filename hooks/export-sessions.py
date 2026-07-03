@@ -182,4 +182,15 @@ if __name__ == "__main__":
     except Exception as e:
         import sys
         sys.stderr.write(f"[export-sessions] error: {e}\n")
+        # 조용한 실패 금지(2026-07-03 감사): 크래시를 hooks.log에 남긴다 — doctor가 스캔.
+        try:
+            import datetime as _dt
+            import os as _os
+            import pathlib as _pl
+            _log = _pl.Path(_os.environ.get("COMMAND_CENTER") or (_pl.Path.home() / "main")) / "logs" / "hooks.log"
+            _log.parent.mkdir(parents=True, exist_ok=True)
+            with _log.open("a") as _f:
+                _f.write(f"{_dt.datetime.now().isoformat(timespec='seconds')} [export-sessions] ERROR {e}\n")
+        except Exception:
+            pass
         raise SystemExit(0)
