@@ -50,7 +50,7 @@ output:        summary.md + remaining_failures.md
    - **기본값은 보수적**(위가 예시 기본). 사용자가 더 크게 원하면 명시적으로만 올린다.
    - **실 LLM 루프 = `--real`(또는 `AUTOPILOT_REAL=1`)로 opt-in.** 매 스텝 = `claude -p` 1회(fresh 헤드리스, 생성자 sonnet). `--real` 없으면 `AUTOPILOT_STEP_HOOK`(측정가능 드라이버)이나, 둘 다 없으면 **fail-closed(exit 4)로 거부**(비용 측정 불가 = 실행 안 함, invariant 1). **`--real` 없이는 claude 가 설치돼 있어도 절대 호출 안 함**(사고성 과금 방지 — opt-in 게이트, 테스트 23).
    - **⚠ `--bare` 인증:** 자식은 `--bare` 로 spawn → 인증이 **`ANTHROPIC_API_KEY` 또는 `apiKeyHelper`(--child-settings 로 주입)만** 읽는다(OAuth·keychain 안 읽음). WSL 메인(OAuth) 세션에선 `ANTHROPIC_API_KEY` export 또는 `--child-settings <apiKeyHelper 든 settings.json>` 필요. 없으면 자식이 인증 실패 → usage 없음 → **fail-closed(exit 4)** 로 안전 정지.
-   - **참고(설계 대비 실제):** 설계가 가정한 `--max-turns` 는 현 claude(2.1.199)에 **없음** → 스텝당 폭주 방어는 `--per-step-secs`(워치독 kill) + `--max-budget-usd`(per-step 사전캡)으로 대체(둘 다 실재 플래그).
+   - **참고(설계 대비 실제):** 설계가 가정한 `--max-turns` 는 현 claude 2.1.x에 **없음**(2.1.201에서 재확인, 2026-07-06) → 스텝당 폭주 방어는 `--per-step-secs`(워치독 kill) + `--max-budget-usd`(per-step 사전캡)으로 대체(둘 다 실재 플래그).
 4. **관찰.** 영속상태는 append-only `$COMMAND_CENTER/logs/autopilot/events.jsonl`(run_id·step·command·result·budget ledger·verdict), 렌더는 `$COMMAND_CENTER/logs/autopilot/<run_id>/progress.md`. 정지 사유는 stdout 마지막 줄 `AUTOPILOT: stop_reason=... steps=... run_id=...`.
 5. **인계.** 종료 후 사용자에게 `git -C <repo> diff` 리뷰 요청. 워킹트리는 보존됨(자동 되돌림 없음). 커밋/머지는 사용자.
 

@@ -23,8 +23,8 @@
 
 ## 🤖 시스템 빠른 참조
 - **백본 = superpowers** (유일 — gstack 제거됨, 2026-05-27 평가): 규율 학파 — brainstorm→plan→TDD→verification, 자동발동. **기본은 superpowers로 일한다.**
-- **커스텀 스킬**: `/vcheck`(시각검증)·`/demo`(데모)·`/kickoff`(Claude↔Codex 적대 기획회의)·`/recall`·`/remember`·`/techreport`·`/spec-decompose`(마스터 기획서→child spec 분해).
-- **커스텀 서브에이전트**: `redteam`(opus·인세션 비평)·`researcher`(sonnet·웹조사)·`verifier`(sonnet·단일주장 적대검증)·`Explore`(haiku 오버라이드 — 탐색 비용 방어).
+- **커스텀 스킬**: `/vcheck`(시각검증)·`/demo`(데모)·`/kickoff`(Claude↔Codex 적대 기획회의)·`/recall`·`/remember`·`/techreport`·`/spec-decompose`(마스터 기획서→child spec 분해)·`/qualityloop`(블라인드 2-judge 채점루프)·`/autopilot`(야간 자율 외곽 하네스, 기본 OFF)·`hallmark`(안티슬롭 디자인).
+- **커스텀 서브에이전트**: `redteam`(opus·인세션 비평)·`researcher`(sonnet·웹조사)·`verifier`(sonnet·단일주장 적대검증)·`judge`(rubric 채점 — qualityloop Judge B)·`Explore`(haiku 오버라이드 — 탐색 비용 방어).
 - **저장 워크플로**: `council-research`(fan-out 리서치→주장 적대검증→인용종합)·`plan-panel`(다각도 blind plan→적대채점→종합)·`repo-audit`(shard→리뷰→검증). 전부 verify cap(25)+sonnet 티어링 내장.
 - **Codex** 크로스리뷰: codex 플러그인(`/codex:review`·`/codex:rescue`) + 직접 `codex exec`(kickoff). 핵심/엔진/데이터 코드.
 - **MCP**: context7=최신문서("use context7"), firecrawl=웹크롤·검색, vercel=배포. 셋 다 minimal 유지(공급망 공격면). 배포·시각검증은 vercel 플러그인·git/gh·`/vcheck`.

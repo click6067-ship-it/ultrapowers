@@ -3,7 +3,7 @@
 
 거의 읽기 전용 진단(예외: `.doctor-state.json` 스냅샷만 best-effort 갱신 — 쓰기 실패해도 진단 계속).
 손대지 않고 '지금 무엇이 어긋났나'만 보고한다.
-점검: codex auth · 메모리 미러 drift · hooks 무결성 · plugins · 누적물 · 런타임 버전.
+점검: codex auth · 메모리/dotclaude 미러 drift · hooks 무결성 · plugins · 누적물 · 런타임 버전.
 이식 가능: COMMAND_CENTER env(기본 ~/main)로 미러 위치 결정.
 
 사용: python3 ~/main/system/doctor.py   (또는 deploy/install 끝에 자동 실행)
@@ -79,6 +79,39 @@ if drift:
     issues += drift
 elif mirror.exists():
     print(f" {OK} 메모리 미러 동기")
+
+# 2b. dotclaude 자산 미러 drift (skills/rules/agents/workflows/CLAUDE.md — 새 자산이 이식 미러에서 조용히 빠지는 사각 제거, 2026-07-06)
+section("dotclaude mirror drift")
+dc = CC / "system/dotclaude"
+_SKIP = {"node_modules", "__pycache__", ".git", "chromedeps"}  # sync.sh 기본 미동기 대상과 정합
+
+
+def asset_stat(root: Path):
+    if not root.exists():
+        return set(), 0
+    files = [f for f in root.rglob("*") if f.is_file() and not (_SKIP & {p.name for p in f.parents})]
+    return {str(f.relative_to(root)) for f in files}, max((f.stat().st_mtime for f in files), default=0)
+
+
+if dc.exists():
+    dc_drift = 0
+    for cat in ("skills", "rules", "agents", "workflows"):
+        lnames, lm = asset_stat(HOME / ".claude" / cat)
+        mnames, mm = asset_stat(dc / cat)
+        missing = sorted(lnames - mnames)  # 미러 여분은 sync.sh prune 몫 — 여기선 누락·낡음만
+        if missing or lm > mm + 2:
+            what = f"미러 누락 {len(missing)}개: {', '.join(missing[:3])}{'…' if len(missing) > 3 else ''}" if missing else "라이브가 미러보다 최신"
+            print(f" {WARN} {cat}: {what} -> bash {dc}/sync.sh")
+            dc_drift += 1
+    gc, mc = HOME / ".claude/CLAUDE.md", dc / "CLAUDE.md"
+    if gc.exists() and (not mc.exists() or gc.stat().st_mtime > mc.stat().st_mtime + 2):
+        print(f" {WARN} CLAUDE.md: 라이브가 미러보다 최신 -> bash {dc}/sync.sh")
+        dc_drift += 1
+    issues += dc_drift
+    if not dc_drift:
+        print(f" {OK} dotclaude 미러 동기 (skills/rules/agents/workflows/CLAUDE.md)")
+else:
+    print(f" {INFO} dotclaude 미러 없음 (이식 미러 미사용이면 무시)")
 
 # 3. hooks 무결성 (설정된 훅 스크립트가 실제 존재하나)
 section("hooks")

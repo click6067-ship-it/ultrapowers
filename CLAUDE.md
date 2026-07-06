@@ -2,7 +2,7 @@
 
 > **🤖 Claude용 · 전역 행동규칙(항상 로드).** 어느 폴더에서든 적용 — 프로젝트별 `CLAUDE.md`가 보강/override.
 > **의도:** 모든 세션에서 내가 따르는 헌법. **정본:** 행동규칙 우선순위 = 사용자 CLAUDE.md·rules > superpowers > 기본.
-> **구조 (2026-07-03 rules 분해):** 이 파일 = 핵심 헌법(Karpathy 4룰·환경·워크스페이스). 상세 규칙은 `~/.claude/rules/*.md` **4개가 자동 로드**된다: `phase0-gate`(짓기 전에 정의) · `work-loop`(작업루프·완료선언·시스템 참조) · `session-memory`(세션 간 기억·메모리) · `pitfalls`(반복 함정). *(이식용 미러: `~/main/system/dotclaude/` — 원본은 여기.)*
+> **구조 (2026-07-03 rules 분해):** 이 파일 = 핵심 헌법(Karpathy 4룰·환경·워크스페이스). 상세 규칙은 `~/.claude/rules/*.md` **5개가 자동 로드**된다: `phase0-gate`(짓기 전에 정의) · `work-loop`(작업루프·완료선언·시스템 참조) · `session-memory`(세션 간 기억·메모리) · `pitfalls`(반복 함정) · `routing`(태스크 라우팅 결정표). +`design-antislop`은 CSS/TSX 등 경로 스코프 로드. *(이식용 미러: `~/main/system/dotclaude/` — 원본은 여기.)*
 
 ## 🖥 실행 환경 (이 머신)
 - **WSL2 (Ubuntu) + VSCode + Claude Code** — 모든 작업이 이 스택에서 이루어진다. 경로·셸·툴링은 리눅스 기준(`${HOME}/...`), Windows 측은 `/mnt/c/...`.

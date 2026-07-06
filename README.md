@@ -23,13 +23,14 @@ Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so C
 | council logs | Every kickoff round saved to `council/<date>_<topic>/` — full transcript + the evolving plan |
 | phase-fixed modes | Planning & research run divergent (both models + subagents + web search); build, verify & review run convergent |
 | cross-session memory | Recent cross-folder context injected at session start; every turn archived to markdown |
-| 8 skills | `kickoff` · `qualityloop` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
+| 9 skills | `kickoff` · `qualityloop` · `autopilot` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
 | 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification (verify cap + model tiering) |
-| 6 hooks | session-start context · per-turn archive (async) · session-end summary · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
+| 5 hooks | session-start context · per-turn archive (async) · session-end summary · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
 | guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master incl. bare `-f` and `+refspec`, through nested `sudo/env/time` wrappers) and lets everything else run — 44 regression cases, deny-by-policy |
+| autopilot | outer safety harness for bounded autonomous runs (`autopilot.sh` + skill) — hard limits (steps · budget · tokens · wall-clock), watchdog process-group kill, diff & command gates with a denied-action ledger, secret scan on commit; unarmed by default, the real LLM loop is `--real` opt-in and fail-closed |
 | sloplint | deterministic (LLM-free) AI-slop design linter — 11 DOM/CSS tells; because an LLM judge shares the same training prior and can't see its own slop |
 | 5 subagents | `researcher` (sonnet · web research + crawl) · `verifier` (sonnet · single-claim adversarial check) · `redteam` (opus · in-session critic) · `judge` (sonnet · rubric scoring for qualityloop) · `Explore` (haiku · cheap search) — model-tiered by cost |
-| doctor + verify | `doctor.py` v2 health check (13 sections — auth · memory-mirror durability · doc-reality drift · dead permission rules · muted hooks · plugin-hooks inventory · rules entrypoint · fan-out caps · runtime versions) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
+| doctor + verify | `doctor.py` health check (8 sections — codex auth · memory & dotclaude-mirror drift · hooks integrity · rules entrypoint · plugins & sandbox · accumulation · runtime versions) · `verify.sh` stack-detect test/typecheck/lint/build matrix |
 | statusline | bottom bar — model · context% · dir · git branch · session cost |
 | Codex config | safe `~/.codex/config.toml` template (`workspace-write` + `on-request` + web search + context7/firecrawl MCP, key placeholder) |
 
@@ -158,8 +159,8 @@ The installer copies `CLAUDE.md → ~/.claude`, `AGENTS.md → ~/.codex`, and `s
 | Path | What |
 |---|---|
 | `CLAUDE.md` · `AGENTS.md` | One shared rulebook — for Claude and for Codex |
-| `skills/` | The 7 skills (`spec-decompose` also ships `spec_doctor.py` + templates) |
-| `hooks/` | The 6 session hooks |
+| `skills/` | The 9 skills (`spec-decompose` also ships `spec_doctor.py` + templates) |
+| `hooks/` | The 5 session hooks |
 | `tools/headless/` | `vcheck` · `demo` (Playwright + ffmpeg; Chromium runs `--no-sandbox`, so point them at trusted URLs; WSL needs chromium libs, installed separately) |
 | `agents/` | 5 subagents — `researcher` · `verifier` · `redteam` · `judge` · `Explore` |
 | `workflows/` | 3 workflows — `council-research` · `plan-panel` · `repo-audit` |

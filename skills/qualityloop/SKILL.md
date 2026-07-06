@@ -27,6 +27,7 @@ description: Use when the user says 점수화해/채점해/시험 쳐/퀄리티 
 UI 산출물 선행조건: `sloplint.mjs`(slop 신호) + `vcheck.mjs`(데스크톱·모바일 스크린샷, 오버플로, 콘솔 에러) 둘 다 — sloplint만으론 깨진 UI를 못 잡는다.
 
 ### 2. 블라인드 독립 채점 (2계열)
+**프리체크**: `codex login status` 먼저 확인 — 미로그인이면 Judge A가 무성 실패해 2-judge 게이트가 **조용히 단독 judge로 열화**된다. 실패 시 기본 = 중단·보고; 사용자가 진행을 원할 때만 "단독 judge 열화 모드"를 라운드 로그·최종 보고에 명시(2-judge인 척 진행 금지).
 **Judge A — Codex** (다른 모델·다른 회사 prior):
 ```bash
 cd $COMMAND_CENTER && codex exec -s read-only -c 'model_reasoning_effort="high"' "$(cat <<'EOF'

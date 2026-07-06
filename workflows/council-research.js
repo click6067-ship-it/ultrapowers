@@ -44,7 +44,7 @@ const found = (await parallel(ANGLES.map((a) => () =>
     `Research this question through ONE lens: "${a}".\nQuestion: ${question}\n` +
     `Fan out several targeted web searches; prefer recent + durable sources over hype. ` +
     `Return claims with source URLs. No raw page dumps.`,
-    { schema: FINDINGS, label: `research:${a}`, phase: 'Fan-out' },
+    { schema: FINDINGS, label: `research:${a}`, phase: 'Fan-out', model: 'sonnet' },  // 리서치 수집 fan-out 티어링(researcher=sonnet 정책) — synthesize는 부모 모델 유지
   ),
 ))).filter(Boolean)
 
