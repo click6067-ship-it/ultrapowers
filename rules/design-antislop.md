@@ -17,6 +17,7 @@ paths:
 3. **발산 후 통합 금지** — 방향이 갈리면 2-3개 옵션을 *따로* 만들고 사용자가 고른다(중간 머지 = 평균 회귀 = slop).
 4. **코드 → 결정론 채점** — 구현 후 `node ~/.claude/tools/headless/sloplint.mjs <url>` (11규칙, LLM-free). 신호 = 의도적 선택(레퍼런스 근거)인지 기본값 수렴인지 판정. 기본값 수렴이면 재작업.
 5. 스크린샷 시각 리뷰(vcheck)는 병행 — 단 sloplint 결과가 우선(LLM 시각판정은 같은 prior로 수렴 위험).
+6. **크로스모델 crit — 방향-설정 디자인(신규 페이지·리디자인)이면 `/crit` 제안** (2026-07-16 신설): Claude는 자기 slop을 못 본다 → vcheck 스샷+디자인 의도를 Codex에 넘겨 적대 비평(`~/.claude/skills/crit/`). 비전 환각 가드(실코드 검증)·sloplint 심판·no-echo 내장. 카피(문구) AI톤 검사도 겸함(`crit/references/copy-antipatterns.md`).
 
 ## 자기비판 질문 (frontend-design 플러그인 2-패스 방식 차용)
 산출 전: "이 페이지의 어떤 요소가, 같은 주제의 *아무* 페이지에나 낼 법한 기본값처럼 읽히는가?" — 답이 '없다'가 될 때까지.

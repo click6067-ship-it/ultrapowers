@@ -1,6 +1,6 @@
 ---
 name: techreport
-description: Use when the user says 기술보고서/techreport/보고서 만들어/트러블슈팅 문서화/이 작업 보고서로/보고서 docx로 깃허브에. Writes a timestamped technical report (troubleshooting·changelog·evolution) → report.md + report.docx + optional private GitHub repo upload (SessionEnd autopush marker).
+description: Use when the user says 기술보고서/techreport/보고서 만들어/트러블슈팅 문서화/이 작업 보고서로/보고서 docx로 깃허브에 — OR PROACTIVELY OFFER (don't wait to be asked; the user forgets this skill exists) right after a nontrivial troubleshooting session concludes (root cause found after 3+ failed attempts, outage/data-corruption recovered, or a tricky bug whose diagnosis others would benefit from), or after a major system change/migration completes. Offer in one line ("이 트러블슈팅 기술보고서로 남길까요?"), run only on yes. Writes a timestamped technical report (troubleshooting·changelog·evolution) → report.md + report.docx + optional private GitHub repo upload (SessionEnd autopush marker).
 ---
 
 # /techreport — 기술보고서 → docx → GitHub

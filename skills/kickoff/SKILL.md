@@ -104,7 +104,7 @@ cat "$CDIR/plan.md")" < /dev/null
 ### 2. 마무리
 - 최종 `$CDIR/plan.md` 확정.
 - **개선 궤적 요약**: 첫 계획 vs 최종 — 어떤 Codex 지적이 계획을 바꿨는지 3~5줄.
-- 다음 단계 안내: 이제 작업 루프(research → 구현 → 테스트 → `codex review` → ...)로 진입. PLAN을 프로젝트 적절한 위치로 옮기거나 `$COMMAND_CENTER/projects/*.md`에 반영.
+- 다음 단계 안내: 확정 plan은 **`/specpack`으로 규격 문서화**(경량 PRD·ERD·design doc — 스테이크 비례)한 뒤 작업 루프(research → 구현 → 테스트 → `codex review` → ...)로 진입. PLAN을 프로젝트 적절한 위치로 옮기거나 `$COMMAND_CENTER/projects/*.md`에 반영.
 
 ## 산출물 (전부 `$COMMAND_CENTER/council/<날짜>_<주제>/` — main에서 한눈에)
 - `plan.md` — 회의를 거친 최종 계획 (Phase 0 frame)

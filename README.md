@@ -23,9 +23,9 @@ Runs on Claude Code + the Codex CLI. The two-model loop drives heavy usage, so C
 | council logs | Every kickoff round saved to `council/<date>_<topic>/` — full transcript + the evolving plan |
 | phase-fixed modes | Planning & research run divergent (both models + subagents + web search); build, verify & review run convergent |
 | cross-session memory | Recent cross-folder context injected at session start; every turn archived to markdown |
-| 9 skills | `kickoff` · `qualityloop` · `autopilot` · `recall` · `remember` · `vcheck` · `demo` · `techreport` · `spec-decompose` |
+| 13 skills | `kickoff` · `specpack` · `qualityloop` · `autopilot` · `recall` · `remember` · `vcheck` · `crit` · `ship` · `serve` · `demo` · `techreport` · `spec-decompose` |
 | 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification (verify cap + model tiering) |
-| 5 hooks | session-start context · per-turn archive (async) · session-end summary · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
+| 7 hooks | session-start context · per-turn archive (async) · session-end summary · **per-project devlog** (session-end: distills each session into the repo's `DEVLOG.md` — refined intent · work done · decisions · loose ends; LLM-refined with deterministic fallback, secret-redacted) · **UI-slop nudge** (post-edit: flags emoji-as-icons and reminds the visual-check gate on the first UI edit of a session) · subagent completion log · techreport auto-push (opt-in) — all failures logged to `hooks.log` |
 | guardrail | a `PreToolUse` hook that blocks **only** catastrophic, irreversible Bash (recursive force-delete of home/root, fs format, raw disk write, fork bomb, force-push to main/master incl. bare `-f` and `+refspec`, through nested `sudo/env/time` wrappers) and lets everything else run — 44 regression cases, deny-by-policy |
 | autopilot | outer safety harness for bounded autonomous runs (`autopilot.sh` + skill) — hard limits (steps · budget · tokens · wall-clock), watchdog process-group kill, diff & command gates with a denied-action ledger, secret scan on commit; unarmed by default, the real LLM loop is `--real` opt-in and fail-closed |
 | sloplint | deterministic (LLM-free) AI-slop design linter — 11 DOM/CSS tells; because an LLM judge shares the same training prior and can't see its own slop |
@@ -87,6 +87,10 @@ A session-start hook injects recent cross-folder context (pointers + links to fu
 | `demo` | Scripted product demo recorder — renders frames in a headless browser into `demo.mp4` + `demo.gif` |
 | `techreport` | Build a technical report from git history + notes, convert to docx, push to GitHub |
 | `spec-decompose` | Split a master spec into per-section child specs (validated by `spec_doctor.py`), then hand off to superpowers `writing-plans` |
+| `specpack` | Turn an approved plan into the standard pre-dev doc chain — lightweight PRD (Non-Goals + falsifiable metrics required, EARS only for ambiguous requirements) · Mermaid-ERD data model · design doc · ADRs — **sized to stakes** (skipping docs on low-stakes work is the correct move, not a shortcut) |
+| `crit` | Cross-model design & copy critique — sends screenshots to Codex (vision) as an adversarial nitpicker, verifies each finding against real code (vision-hallucination guard), `sloplint` referees, no-echo scoring, 3-round cap; accepted/rejected calls accumulate into the project's `design.md` |
+| `ship` | The standard finish chain — verify → author-email + diff-damage check → scoped commit → push → deploy (preview by default) → live visual check → evidence report |
+| `serve` | Start a dev server that's actually reachable — outside-sandbox launch, `127.0.0.1` reachability check, and a 4-family localhost diagnosis (netns · IPv6 blackhole · port shadowing · VM idle reclaim) on failure |
 
 ```bash
 node ~/.claude/tools/headless/vcheck.mjs <url> [outdir]                 # desktop.png + mobile.png + JSON report

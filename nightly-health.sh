@@ -68,7 +68,15 @@ else
   check mirror_drift 0
 fi
 
-# 5. 트렌드-레이더 (2026-07-03 엔지니어 벤치마크 채택) — 신 Claude Code 버전 감지.
+# 5. netcheck — WSL 네트워크 회귀 게이트 (두더지 매트릭스 기계검증, 2026-07-07). 없으면 SKIP.
+NETCHECK="$CC/system/netcheck.sh"
+if [ -f "$NETCHECK" ]; then
+  out=$(bash "$NETCHECK" 2>&1); check netcheck $? "$out"
+else
+  record "netcheck: SKIP (없음)"
+fi
+
+# 6. 트렌드-레이더 (2026-07-03 엔지니어 벤치마크 채택) — 신 Claude Code 버전 감지.
 #    "한 번 caught up" → "계속 caught up". FAIL 아님(정상): 버전 바뀌면 heads-up만.
 VSTATE="$CC/system/.cc-version-seen"
 CUR_VER=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)

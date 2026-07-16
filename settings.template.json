@@ -22,6 +22,17 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __CLAUDE__/hooks/uislop-check.py"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",
@@ -62,6 +73,10 @@
           {
             "type": "command",
             "command": "__CLAUDE__/hooks/session-end-summary.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 __CLAUDE__/hooks/devlog.py"
           }
         ]
       }

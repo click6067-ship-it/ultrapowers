@@ -16,20 +16,22 @@ backup "$DST/CLAUDE.md"; cp "$SRC/CLAUDE.md" "$DST/CLAUDE.md"
 echo "▶ Codex 전역 헌법 AGENTS.md (~/.codex/AGENTS.md — 2모델 org의 Codex 절반, CLAUDE.md 대칭짝)"
 if [ -f "$SRC/AGENTS.md" ]; then mkdir -p "$HOME/.codex"; backup "$HOME/.codex/AGENTS.md"; cp "$SRC/AGENTS.md" "$HOME/.codex/AGENTS.md"; fi
 
-echo "▶ 커스텀 스킬 6 (vcheck·demo·kickoff·recall·remember·techreport) + spec-decompose(아래) = 7"
-for s in vcheck demo kickoff recall remember techreport; do
-  mkdir -p "$DST/skills/$s"; cp "$SRC/skills/$s/SKILL.md" "$DST/skills/$s/SKILL.md"
+echo "▶ 커스텀 스킬 9 (vcheck·demo·kickoff·recall·remember·techreport·qualityloop·ship·serve) + 디렉토리형 4(아래) = 13"
+for s in vcheck demo kickoff recall remember techreport qualityloop autopilot ship serve; do
+  if [ -f "$SRC/skills/$s/SKILL.md" ]; then mkdir -p "$DST/skills/$s"; cp "$SRC/skills/$s/SKILL.md" "$DST/skills/$s/SKILL.md"; fi
 done
 
-echo "▶ 커스텀 스킬: spec-decompose (SKILL.md + tools + templates)"
-if [ -d "$SRC/skills/spec-decompose" ]; then
-  backup "$DST/skills/spec-decompose"; rm -rf "$DST/skills/spec-decompose"
-  cp -r "$SRC/skills/spec-decompose" "$DST/skills/spec-decompose"
-  find "$DST/skills/spec-decompose" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
-fi
+echo "▶ 디렉토리형 스킬: spec-decompose(tools+templates) · specpack(templates) · crit(references)"
+for s in spec-decompose specpack crit; do
+  if [ -d "$SRC/skills/$s" ]; then
+    backup "$DST/skills/$s"; rm -rf "$DST/skills/$s"
+    cp -r "$SRC/skills/$s" "$DST/skills/$s"
+    find "$DST/skills/$s" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+  fi
+done
 
 echo "▶ hooks → ~/.claude/hooks/ (위치 독립)"
-for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py subagent-log.py; do
+for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py subagent-log.py devlog.py uislop-check.py; do
   if [ -f "$SRC/hooks/$h" ]; then cp "$SRC/hooks/$h" "$DST/hooks/$h"; chmod +x "$DST/hooks/$h"; fi
 done
 
@@ -44,10 +46,12 @@ echo "▶ statusline + 커스텀 서브에이전트 (researcher·verifier·redte
 [ -f "$SRC/statusline.py" ] && { backup "$DST/statusline.py"; cp "$SRC/statusline.py" "$DST/statusline.py"; }
 if ls "$SRC"/agents/*.md >/dev/null 2>&1; then mkdir -p "$DST/agents"; cp "$SRC"/agents/*.md "$DST/agents/"; fi
 
-echo "▶ doctor + guardrail + verify + Codex config (안전 기본 — danger 없음, 키 placeholder)"
+echo "▶ doctor + guardrail + verify + doc2txt + netcheck + Codex config (안전 기본 — danger 없음, 키 placeholder)"
 [ -f "$SRC/doctor.py" ] && cp "$SRC/doctor.py" "$DST/doctor.py"
 [ -f "$SRC/guardrail.py" ] && cp "$SRC/guardrail.py" "$DST/guardrail.py"
 [ -f "$SRC/verify.sh" ] && cp "$SRC/verify.sh" "$DST/verify.sh"
+[ -f "$SRC/doc2txt.sh" ] && { cp "$SRC/doc2txt.sh" "$DST/doc2txt.sh"; chmod +x "$DST/doc2txt.sh"; }
+[ -f "$SRC/netcheck.sh" ] && { cp "$SRC/netcheck.sh" "$DST/netcheck.sh"; chmod +x "$DST/netcheck.sh"; }
 if ls "$SRC"/workflows/*.js >/dev/null 2>&1; then mkdir -p "$DST/workflows"; cp "$SRC"/workflows/*.js "$DST/workflows/"; fi
 if [ -f "$SRC/codex.config.template.toml" ] && [ ! -f "$HOME/.codex/config.toml" ]; then
   mkdir -p "$HOME/.codex"; cp "$SRC/codex.config.template.toml" "$HOME/.codex/config.toml"
