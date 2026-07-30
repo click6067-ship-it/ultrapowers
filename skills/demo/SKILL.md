@@ -42,7 +42,7 @@ export default async function (page, h) {
 
 - **Post MP4, not GIF** (Reddit/X autoplay video natively; sharper + smaller). GIF is the fallback for GitHub READMEs / Discord.
 - Offer to open the out folder in Windows: `explorer.exe "$(wslpath -w <outdir>)"`.
-- Extract a few frames and Read them to verify the capture looks right before handing off. 시스템 ffmpeg는 미설치 — ffmpeg-static 바이너리 사용: `FF=$(node -e "console.log(require('${HOME}/.claude/tools/headless/node_modules/ffmpeg-static'))") && "$FF" -ss <t> -i demo.mp4 -frames:v 1 f.png`
+- Extract a few frames and Read them to verify the capture looks right before handing off. 시스템 ffmpeg는 미설치 — ffmpeg-static 바이너리 사용: `FF=$(node -e "console.log(require('/home/click/.claude/tools/headless/node_modules/ffmpeg-static'))") && "$FF" -ss <t> -i demo.mp4 -frames:v 1 f.png`
 
 ## Tips
 - Click buttons via `page.evaluate(() => [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='X').click())` to avoid Playwright auto-scroll jumping the framing.

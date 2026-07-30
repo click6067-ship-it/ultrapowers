@@ -1,6 +1,6 @@
 # 🧠 세션 간 기억 (cross-folder, 시점 기반 — 자동)
 
-- **세션 시작 시** `SessionStart` 훅(`~/main/system/recent-context.py`)이 전 폴더 세션을 *시점순*으로 훑어 최근 작업 맥락을 자동 주입한다. → 어느 폴더에서 열든, vscode를 껐다 켜든, 직전 작업을 자동 인지. 폴더가 바뀌어 "끊긴 것처럼" 보여도 데이터는 안전.
+- **세션 시작 시** `SessionStart` 훅(`~/main/system/recent-context.py`)이 전 폴더 세션을 *시점순*으로 훑어 **최근 세션의 메타데이터(포인터)만** 주입한다 — 파일명·시각·크기이지 대화 내용이 아니다(프롬프트 본문 미주입 = 인젝션·누수 차단). 즉 "직전 작업을 자동 인지"가 아니라 **어디를 읽으면 되는지를 자동 인지**하는 것이다. 내용이 필요하면 로그를 Read하거나 `/recall`. 폴더가 바뀌어 "끊긴 것처럼" 보여도 데이터는 안전.
 - **세션 종료 시** `Stop` 훅이 `export-sessions.py`로 전체 대화를 `~/main/logs/<키>__<날짜>__<sid>.md` 에 갱신. 상세 맥락이 필요하면 그 파일을 Read.
 - **프로젝트별 개발일지 (2026-07-16 신설)**: SessionEnd 훅 `devlog.py`가 `~/ghq/**` repo 세션 종료 시 대화를 LLM(haiku) 정제해 **그 repo 루트 `DEVLOG.md`**에 축적(요청 의도·실제 작업·결정·미완·파일·시간). 타인이 읽어도 맥락이 잡히는 프로젝트 내 기록 — worklog(메타 요약)와 별개. 항목 마커(`devlog:entry <sid>`)는 지우지 말 것(중복 방지 키). 끄기: env `DEVLOG_DISABLE=1`.
 - **원본**은 항상 `~/.claude/projects/*/*.jsonl`(하니스 자동). **큐레이션 메모리**는 키별 `memory/` + git 미러 `~/main/system/memory-snapshot/<키>/`(SessionEnd sync가 scoped 자동 커밋).

@@ -37,6 +37,49 @@ def is_danger_target(t):
     return False
 
 
+# ── 크리덴셜 누출 방어 (2026-07-29 2백본 감사) ──────────────────────────────
+# 왜: CLAUDE.md의 최고 스테이크 규칙(키 파일 Read 금지·값 stdout 금지·git add -A 금지)에
+# 기계 집행이 0이었다. permissions.deny의 Read(...)는 Read 툴만 막고 Bash는 통째 allow라
+# `cat ~/.secrets/...`가 무방비였다. 승인된 경로(source 주입·sha256 지문)는 통과시킨다.
+_SECRET_PATH_RE = re.compile(
+    r'(^|/)\.secrets(/|$)'
+    r'|(^|/)\.env($|\.)'
+    r'|api[ _-]?keys?[^/]*$'
+    r'|(^|/)\.credentials\.json$'
+    r'|(^|/)auth\.json$'
+    r'|(^|/)id_rsa'
+    r'|\.pem$', re.I)
+_SECRET_SAFE_RE = re.compile(r'\.env\.(example|sample|template|dist)$', re.I)
+# 내용을 stdout·다른 파일로 흘리는 명령만. source/./sha256sum/stat/ls/chmod는 승인 경로라 제외.
+_DUMP_CMDS = {"cat", "bat", "less", "more", "head", "tail", "nl", "tac", "strings", "xxd",
+              "od", "hexdump", "base64", "cp", "scp", "rsync", "tee",
+              "grep", "egrep", "fgrep", "rg", "awk", "sed", "cut"}
+_CRED_VAR_RE = re.compile(
+    r'\$\{?[A-Za-z_]*(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Za-z0-9_]*\}?', re.I)
+_CRED_NAME_RE = re.compile(r'^[A-Za-z_]*(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)', re.I)
+
+
+# 패턴 인자를 받는 검색계 — 첫 인자가 파일이 아니라 검색어라, 크리덴셜 '이름'을 문서에서
+# 찾는 read-only 감사(grep -rn api-keys …)가 오탐된다(2026-07-29 실측). 이들은 토큰이
+# 실존 파일/디렉토리로 해석될 때만 차단한다. cat/cp류는 기존대로 이름만으로 차단.
+_PATTERN_CMDS = {"grep", "egrep", "fgrep", "rg", "sed", "awk"}
+
+
+def is_secret_path(t):
+    s = t.strip('"\'')
+    if _SECRET_SAFE_RE.search(s):
+        return False
+    return bool(_SECRET_PATH_RE.search(s))
+
+
+def resolves_to_real_path(t):
+    s = os.path.expandvars(os.path.expanduser(t.strip('"\'')))
+    try:
+        return os.path.exists(s)
+    except Exception:
+        return False
+
+
 def has_recursive(args):
     for a in args:
         if a in ("-r", "-R", "--recursive"):
@@ -87,6 +130,14 @@ def check(cmd, depth=0):
         toks = toks_of(seg)
         if not toks:
             continue
+        # env/printenv 단독 = 환경변수 전체 덤프. 아래 wrapper 소비에 먹히므로 여기서 먼저 본다.
+        bare = [t for t in toks
+                if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', t) and not t.startswith("-")]
+        if bare and bare[0] in ("env", "printenv"):
+            if len(bare) == 1:
+                block("환경변수 전체 덤프 — 크리덴셜 값이 stdout에 실린다")
+            if bare[0] == "printenv" and any(_CRED_NAME_RE.match(a) for a in bare[1:]):
+                block("크리덴셜 환경변수 값 출력 — 확인은 SHA256 지문으로")
         i = 0
         while i < len(toks) and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', toks[i]):
             i += 1
@@ -99,6 +150,18 @@ def check(cmd, depth=0):
             continue
         c0 = toks[i]
         args = toks[i + 1:]
+        if c0 in _DUMP_CMDS:
+            hits = [t for t in args if is_secret_path(t)]
+            if c0 in _PATTERN_CMDS:
+                hits = [t for t in hits if resolves_to_real_path(t)]
+            if hits:
+                block("크리덴셜 파일 내용 노출·복사 — 값 확인은 SHA256 지문으로 (주입은 source)")
+        if c0 in ("echo", "printf") and _CRED_VAR_RE.search(seg):
+            block("크리덴셜 환경변수 값 stdout 출력")
+        if c0 == "git" and "add" in args:
+            gi = args.index("add")
+            if any(a in ("-A", "--all", ".", ":/") for a in args[gi + 1:]):
+                block("git add -A/. — 의도한 경로만 stage (pitfalls)")
         if c0 in ("bash", "sh", "zsh", "dash", "ksh") and "-c" in args:
             ci = args.index("-c")
             if ci + 1 < len(args):

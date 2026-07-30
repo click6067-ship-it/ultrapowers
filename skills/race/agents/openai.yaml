@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blind Race"
+  short_description: "Run sealed alternatives with two blind judges"
+  default_prompt: "Compare independent alternatives with sealed inputs, isolated candidates, and fresh blind judges."

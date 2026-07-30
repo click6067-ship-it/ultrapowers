@@ -1,15 +1,36 @@
 {
-  "_comment": "ultrapowers 포터블 템플릿. install.sh가 __CLAUDE__ → ~/.claude 로 치환(hook은 ~/.claude/hooks/에 설치됨). command-center 경로는 hook이 COMMAND_CENTER env(기본 ~/main)로 읽음. allow=[] 의도적(권한=로컬 신뢰 opt-in; 예시는 settings.local.example.json). techreport-autopush.py(보고서 자동 git push)는 기본 비활성 — 원하면 SessionEnd hooks에 직접 추가(opt-in).",
+  "_comment": "Canonical 포터블 템플릿 — 손수 관리(라이브 settings에서 자동복사 금지). deploy.sh가 /home/click/.claude->$DST, /home/click/main->클론위치, 잔여 /home/click/->$HOME/ 로 경로치환. allow는 의도적으로 비움(권한=로컬 신뢰설정, 새 머신서 본인 opt-in). 보안 블록(attribution·deny·disable*·autoUploadSessions)은 no-cloud 정책(2026-07-26 사고)의 필수 이식분 — deploy.sh 머지가 기존 설치에도 강제 적용한다. sandbox는 의도적 미포함(2026-07-03c 결정: 머신별 bwrap/socat deps + failIfUnavailable fail-closed — 이식 후 수동 활성). 로컬 편의권한 예시는 settings.local.example.json 참고.",
   "env": {
-    "COMMAND_CENTER": "__CC__",
-    "LD_LIBRARY_PATH": "__CLAUDE__/tools/headless/chromedeps/usr/lib/x86_64-linux-gnu"
+    "LD_LIBRARY_PATH": "/home/click/.claude/tools/headless/chromedeps/usr/lib/x86_64-linux-gnu"
+  },
+  "attribution": {
+    "sessionUrl": false
   },
   "permissions": {
     "allow": [],
+    "deny": [
+      "Artifact",
+      "RemoteTrigger",
+      "Read(//home/click/.secrets/**)",
+      "Read(//home/click/.codex/auth.json)",
+      "Read(//home/click/.claude/.credentials.json)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/api keys*)",
+      "Read(**/api-keys*)",
+      "Read(**/*credentials*.json)",
+      "Read(**/id_rsa*)",
+      "Read(**/*.pem)"
+    ],
     "additionalDirectories": [
       "/tmp"
     ]
   },
+  "disableClaudeAiConnectors": true,
+  "disableRemoteControl": true,
+  "disableArtifact": true,
+  "autoUploadSessions": false,
+  "remoteControlAtStartup": false,
   "hooks": {
     "PreToolUse": [
       {
@@ -17,40 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 __CLAUDE__/guardrail.py"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 __CLAUDE__/hooks/uislop-check.py"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 __CLAUDE__/hooks/recent-context.py"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 __CLAUDE__/hooks/export-sessions.py >/dev/null 2>&1"
+            "command": "python3 /home/click/main/system/guardrail.py"
           }
         ]
       }
@@ -61,7 +49,33 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 __CLAUDE__/hooks/subagent-log.py"
+            "command": "python3 /home/click/main/system/subagent-log.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/click/main/system/recent-context.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/click/main/system/export-sessions.py >/dev/null 2>&1"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/click/main/system/skill-nudge.py"
           }
         ]
       }
@@ -72,11 +86,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "__CLAUDE__/hooks/session-end-summary.py"
-          },
+            "command": "python3 /home/click/main/system/session-end-runner.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
           {
             "type": "command",
-            "command": "python3 __CLAUDE__/hooks/devlog.py"
+            "command": "python3 /home/click/main/system/uislop-check.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/click/main/system/skill-nudge.py"
           }
         ]
       }
@@ -99,6 +131,6 @@
   "theme": "dark-daltonized",
   "statusLine": {
     "type": "command",
-    "command": "python3 __CLAUDE__/statusline.py"
+    "command": "python3 /home/click/.claude/statusline.py"
   }
 }

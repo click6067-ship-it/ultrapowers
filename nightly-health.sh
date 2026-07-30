@@ -103,4 +103,4 @@ else
 fi
 
 # ── crontab 등록 예시 (사용자가 crontab -e 로 직접 — 자동 등록 금지) ──
-# 매일 새벽 3시: 0 3 * * * ${COMMAND_CENTER}/system/nightly-health.sh
+# 매일 새벽 3시: 0 3 * * * /home/click/main/system/nightly-health.sh

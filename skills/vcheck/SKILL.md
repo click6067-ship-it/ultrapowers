@@ -13,7 +13,7 @@ Verify a web page renders correctly across desktop + mobile, with no layout over
 node ~/.claude/tools/headless/vcheck.mjs <url> [outdir]
 ```
 
-- `<url>` — live site, preview URL, or local dev server (e.g. `http://localhost:3000`).
+- `<url>` — live site, preview URL, or local dev server (e.g. `http://127.0.0.1:3000`).
 - The script self-injects the chromium system libs (`~/.claude/tools/headless/chromedeps`), so no `LD_LIBRARY_PATH` export is needed.
 - It prints a JSON report and writes `desktop.png` + `mobile.png` to the out dir.
 

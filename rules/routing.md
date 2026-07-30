@@ -1,63 +1,38 @@
-# 🧭 태스크 라우팅 결정표 — "이 태스크엔 뭘 쓰나" (2026-07-03)
+# 🧭 태스크 라우팅
 
-**요청을 받으면 이 표로 라우팅한다.** 반-번복 원칙: **라우팅 + 결정론 게이트(토큰 ≈0) = 항상 적용** / **비싼 실행(멀티에이전트 워크플로·블라인드 채점) = 자동발동 금지, 제안 후 사용자 승인**(deep-research 번복 교훈). 도구 상세·파이프라인은 work-loop.md, 발동 확인 규칙은 phase0-gate.md가 정본 — 이 파일은 *선택 결정표*만.
+비싼 하니스는 능력 과시가 아니라 **잘못된 결정을 줄일 때만** 쓴다.
 
-## ① 모델 (세션 단위)
-| 태스크 | 모델 |
+| 상황 | 경로 |
 |---|---|
-| 메타·시스템 정비 (`~/main` · `~/.claude`) | **Fable** |
-| 프로젝트 구현 (ghq repo 코딩) | **Opus** |
+| 명확·가역·작은 작업 | 바로 실행 → 관련 test |
+| 모호하지만 저스테이크 | 짧은 Intake → 단일 plan |
+| 새 프로젝트·고비용 방향결정 | `/kickoff` Plan Council 제안; 사용자가 명시했으면 즉시 실행 |
+| 중간 스테이크 기능·모듈 설계 | `plan-panel` 단일 백본 패널 — kickoff와 상호배타 (2026-07-30 확정) |
+| 병렬 다중 에이전트 협업 | `orca-trio` 실터미널 crew 단일 표준 — Agent Teams 은퇴 (2026-07-30 확정) |
+| 다출처 사실 조사 | 단발 검색 또는 `council-research`; 비용 큰 fan-out은 제안-first |
+| 실제 대안의 동작 비교 | `/race`; 후보별 격리와 같은 rubric |
+| 구현 | worktree당 writer 1 + TDD |
+| 핵심/엔진/데이터 리뷰 | fresh read-only Codex reviewer |
+| UI | render 확인 + vcheck; 방향 디자인이면 crit |
+| 마무리 — 솔로·단일 repo | verify → 사용자 ship gate → `/ship` |
+| 마무리 — 크루·worktree | verify → 사용자 ship gate → `/orca-trio` finalization 계약(fetch→divergence 판정→orphan 0) |
 
-세션-작업 불일치면 `/model` 전환을 먼저 제안. (SessionStart 훅이 cwd 기반 권고 1줄 주입 — 값 싼 결정론 nudge.)
+도구 소유권:
 
-## ② 서브에이전트 (인세션 · 단일 목적 — 필요 시 바로)
-| 필요 | 서브에이전트 |
-|---|---|
-| 웹 리서치 (다출처 조사·크롤) | `researcher` |
-| 단일 주장 적대 검증 | `verifier` |
-| 계획·디프 인세션 비평 | `redteam` |
-| rubric 채점 (독립 심사) | `judge` |
-| 코드베이스 탐색 (위치·구조 파악) | `Explore` |
+- `/kickoff`: 방향과 Plan Council
+- `/specpack`: 승인된 방향의 최소 충분 스펙 문서
+- `spec-decompose`: 독립 모듈일 때만 스펙 트리
+- `writing-plans`: 구현 단계와 테스트 순서
+- Orca orchestration: 장수 task/dispatch/dependency/gate (orca-council은 별도 경로가 아니라 kickoff의 실행 인프라 — 2026-07-30)
+- subagent: 한 worker 내부의 짧고 bounded한 read-only 조사
+- `/qualityloop`: 완성물 최종 게이트·비코드 산출물·rubric 블라인드 채점 한정; 일상 코드 diff 리뷰는 stop-review 소유 — 상호배타 (2026-07-30 확정)
 
-## ③ 워크플로 (멀티에이전트 = 비쌈 → **제안-first, 자동발동 금지**)
-| 상황 | 워크플로 |
-|---|---|
-| 다각도 리서치 + 주장 적대검증 | `council-research` |
-| 어려운 결정·고비용 빌드 전 계획 | `plan-panel` |
-| 코드 감사 (버그·보안·품질 sweep) | `repo-audit` |
+결정론 게이트는 항상 적용한다.
 
-발동 전 "단발로 갈지 / 워크플로 돌릴지" `AskUserQuestion`으로 확인. 예외 = 사용자가 그 메시지에서 명시 요청(이미 승인).
+- 완료 선언 전 실제 test/`system/verify.sh`
+- 파괴 명령은 guardrail
+- 네트워크 변경은 `system/netcheck.sh`
+- merge·deploy·외부 발행은 사용자 승인
+- 결과가 없는 workflow run은 PASS가 아니라 `NOT_VERIFIED`
 
-## ③b 스테이크 에스컬레이션 (Layer 2 — **제안-first, 자동발동 아님**)
-아래 고스테이크 신호를 **자가 감지**하면, 비싼 규율(kickoff·plan-panel·qualityloop)을 *제안*한다(자동 실행 X — deep-research 번복 교훈). 신호 **2개+** 겹치면 제안 강도↑:
-- 되돌리기 어려움(배포·삭제·마이그레이션·외부 발행) · 크리덴셜/보안/네트워크 낌 · 의료·학술·금융·법 주장 · 큰 아키텍처/데이터모델 변경 · 답이 갈리는 열린 결정 · 비용/토큰 큰 작업 · 요구가 모호(문제정의 흔들림).
-- 매핑: 방향·기획 스테이크 → `/kickoff` · 여러 경로 결정 → `/plan-panel` · 완성물 품질 → `/qualityloop` · 코드 스테이크 → `codex review`.
-- 반대로 **저스테이크(1줄 잡일·명확·가역)** = 게이트 스킵, 바로 실행(과적 금지).
-- (선택·무장식) `/autopilot`처럼 예산·기본OFF로만 자동 실행 허용 — 서서 자동발동 금지.
-
-## ③c 상황→스킬 선제 제안 (2026-07-16 신설 — "사용자가 안 불러도 Claude가 판단해서 묻는다")
-스킬 발동은 키워드 매칭에 가깝다(실측) — 사용자가 스킬 이름을 까먹으면 죽은 도구가 된다. **아래 상황 신호를 자가 감지하면 해당 스킬을 1줄로 먼저 제안한다.** 제안-first 원칙 그대로: 감지→1줄 제안→사용자 판단(자동 실행 아님). 같은 세션에서 거절당한 제안은 다시 안 꺼낸다(강매 금지).
-
-| 상황 신호 (Claude가 감지) | 선제 제안 |
-|---|---|
-| **트러블슈팅 종결** — 3+ 시도 끝 근본원인 규명·장애/손상 복구·비자명 버그 해결 | `/techreport` ("이 트러블슈팅 기술보고서로 남길까요?") |
-| 새 프로젝트·기능 브리프인데 방향이 열려 있음 | `/kickoff` (Phase 0 2모델 회의) |
-| plan 확정 직후 (kickoff APPROVED 등) — 코드 들어가기 전 | `/specpack` (PRD·ERD·design 정식화) |
-| UI를 만들었거나 고친 직후 | `/vcheck` (+방향-설정 디자인이면 `/crit`) |
-| 완성물(리포트·페이지·기획서) 마무리 선언 직전 | `/qualityloop` |
-| 세션에서 durable한 사실·선호·작업방식 교정이 나옴 | `/remember` |
-| "전에 했던 것 같은데" 성격의 작업 시작 | `/recall` |
-| 런칭·공유 준비 (시연 필요) | `/demo` |
-| 작업 마무리 국면 — "끝내자/커밋해/배포해" 계열 감지 | `/ship` (verify→커밋→푸시→배포→vcheck 체인으로 제안) |
-| dev 서버 기동 필요 또는 "localhost 안 열려" | `/serve` (샌드박스 밖 기동 + 127.0.0.1 검증 + 4계열 자동 진단) |
-
-## ④ 게이트 (결정론 강제 레이어 — 항상 켬, Claude 토큰 0)
-| 산출물 | 게이트 |
-|---|---|
-| 코드 변경 | `bash ~/main/system/verify.sh` + 테스트 — 완료 선언 전 실행(증거) |
-| UI 신규·개편 | `sloplint` → `/vcheck`(스샷·콘솔에러) → 방향-설정 디자인이면 `/crit`(Codex 크로스 비평) 제안 |
-| 웹 인터랙티브 디버깅(로그인·클릭·네트워크·DOM) | `/chrome`(빌트인, MCP 없음 — vcheck으로 부족한 라이브 상호작용). FitLLM·chartoneshot 등 |
-| 완성물 (리포트·페이지·기획서) | `/qualityloop` — 블라인드 채점은 비싸므로 *제안-first* |
-| 파괴적 명령 | `guardrail.py` (PreToolUse 훅 — 자동 차단) |
-| 네트워크 변경(.wslconfig·보안SW 설치/제거·WSL 업데이트) | `bash ~/main/system/netcheck.sh` — 두더지 매트릭스 회귀 게이트(~3초, 실제 netns에서) |
-| 야간 시스템 헬스 | `system/nightly-health.sh` (사용자가 crontab 등록 시 — 실패할 때만 알림) |
+상황별 긴 실행법은 해당 skill/runbook을 조건부로 읽는다. 이 파일에서 모델 목록·스킬 전체 목록·사고 복구 절차를 반복하지 않는다.

@@ -1,13 +1,12 @@
-# ⚠️ 반복 함정
+# ⚠️ 반복 함정 — 상시 경고만
 
-- **커밋 author 이메일**: 기본 신원 = `click6067-ship-it <you@example.com>` (전역 git config에 명시됨, gh 활성 계정과 일치). 이 신원으로 커밋한다.
-- **빌트인 슬래시·플러그인 설치**(`/plugin`, `/codex:*` 등)는 사용자가 직접 입력해야 함 (Claude가 대신 실행 못 함).
-- **WSL chromium**: libs는 settings.json env(`LD_LIBRARY_PATH`)로 해결됨.
-- **codex exec**: stdin 안 닫으면 무한 대기(`< /dev/null` 필수) · 글로벌 플래그(-s/-c)는 `resume` *앞에* · 백그라운드 실행 함정은 CPX 메모리 codex-exec-background-traps 참조.
-- **ffmpeg**: 시스템 미설치 — `~/.claude/tools/headless/node_modules/ffmpeg-static` 바이너리 사용.
-- **hwp/hwpx 문서**: Read 도구로 못 읽는다(12세션 실측 씨름) → `bash ~/main/system/doc2txt.sh <파일>` (hwp5txt, 표 위주 문서는 hwp5proc xml 자동 폴백 — 표 셀 텍스트 포함). PDF는 Read가 네이티브 지원(벌크 추출만 pdftotext — poppler-utils 필요).
-- **샌드박스 /dev/null 마스크**: 샌드박스 안 `git status`에 `.bashrc`·`.gitconfig`·`.claude/settings.json` 류가 untracked로 보이면 실파일 아님(`crw-` 캐릭터 디바이스 = 민감경로 마스킹, `ls -la`로 판별) — `git add -A` 금지, 의도한 경로만 add.
-- **⚠️ dev 서버는 샌드박스 Bash로 띄우지 말 것 (localhost 만성 원흉 1호, 2026-07-06 실증)**: 샌드박스는 호출마다 ephemeral **별도 netns** — 안에서 띄운 서버는 브라우저·호스트·다음 Bash 호출 어디서도 도달 불가(안에서 curl 200이라 "떠 있다" 착각). 서버 기동은 `dangerouslyDisableSandbox` 또는 사용자 `!` 터미널로. **완료 기준 = 사용자 브라우저 확인**(7/3 교훈).
-- **브라우저 localhost는 `127.0.0.1`로**: mirrored 모드가 Windows `localhost`(::1) SYN을 블랙홀(5초+ 행, RST 없음) — IPv4 폴백 여부는 클라이언트 복불복. 실측: `127.0.0.1`=2.6ms 200 / `::1`=timeout (2026-07-06). docker+bolt 특수 케이스는 CPX 메모리 wsl-mirrored-ipv6-localhost(tcpproxy.ps1) 참조.
-- **WSL `vmIdleTimeout` 주의**: 유휴 시 VM 회수 → dev 서버 전멸("어제 띄운 게 오늘 안 열림"). **2026-07-07 60초→1시간(3600000) 완화 적용·셧다운 후 효력 확인**(MODE 리포트 vmIdleTimeout=3600000 + netcheck 전항목 PASS). 함께 `git config --global core.fsync=committed` 적용 — VM 회수·정전이 커밋 도중 때려도 빈-오브젝트 손상 안 남게. mirrored 포트 섀도잉(Windows 프로세스 점유가 WSL ss에 안 보임 → EADDRINUSE 미스터리)과 stale Next 데몬 락도 같은 증상군. **섀도잉 1순위 진단 = `netsh.exe interface portproxy show all`** — NAT 시절 잔재 규칙(172.20.x 타깃)을 iphlpsvc가 계속 실행하며 포트 점유+무한 행(7/6 :3000 실증·elevated delete로 해결).
-- **⚠️ WSL VM 회수(vmIdleTimeout)가 `git` 쓰기 도중 프로세스를 죽이면 `.git`+작업트리 이중 손상**(2026-07-07 ~/main 실증): ① `.git`에 빈(0바이트) 오브젝트 + 인덱스가 팬텀 blob 참조 → `bad object HEAD`·`gc`/`repack` 불능, ② **작업트리 파일이 0바이트로 truncate**(특히 sync가 덮어쓰던 미러 파일 다수). 복구 순서: 정상 tip 확인(`origin/master`=reflog 마지막 정상 커밋) → 빈 오브젝트 `find .git/objects -type f -empty -delete` → `git update-ref refs/heads/<b> <정상tip>` → `rm .git/index && git read-tree HEAD`(인덱스의 팬텀 참조 제거) → `git rev-list --all | git pack-objects --revs <path>`로 **reachable만** 재패킹 후 구 팩·loose 잔해 제거 → `git checkout HEAD -- <경로>`로 truncate된 파일 복원. **커밋 전 `git diff --shortstat` 필수** — `NNN files … 0 insertions(+)`(deletions-only)면 truncate 피해를 커밋해 원격까지 날릴 뻔한 신호. 백업은 파괴적 수술 전 `tar czf <scratch>/git-backup.tgz .git`.
+상세 사고 기록은 매 세션에 싣지 않는다. 아래 **증상 시그니처가 맞을 때만** 연결된 runbook을 읽는다.
+
+- **공유 계정·클라우드 노출:** 일반 모델 추론은 허용하지만 비밀 원문을 모델 컨텍스트에 넣지 않는다. Ultraplan·ultrareview·Remote Control/원격 에이전트·Artifact 발행·세션 URL 트레일러는 금지한다. “업로드 0”이라 과장하지 말고, 정확히는 **일반 추론 외 웹 게시·원격 실행·계정 공유형 지속 저장 금지**다. 설정·사고 경계·기존 웹 산출물 삭제는 `~/main/system/runbooks/pitfalls-reference-2026-07-26.md`를 본다.
+- **파괴·권한:** `danger-full-access + approval=never`는 이 머신의 의도적 예외일 뿐 안전 경계가 아니다. 파괴·외부발행·credential·deploy는 사용자 gate와 실제 target 확인이 먼저다.
+- **Git:** author는 `click6067-ship-it <click6067@gmail.com>`. `git add -A` 금지, 의도한 경로만 stage. `git diff --shortstat`가 대량 삭제만 보이거나 `bad object HEAD`면 즉시 중단하고 상세 기록의 Git 복구 절차를 읽는다.
+- **샌드박스 마스크:** 만든 적 없는 `.bashrc`·`.gitconfig`·`.claude/`·`.mcp.json`은 마운트 스켈레톤일 수 있다. `ls -la`로 유형을 확인하고 삭제·stage하지 않는다.
+- **Codex CLI:** `codex exec`는 **stdin을 닫아서 호출한다 — `< /dev/null` 필수**(안 닫으면 무한 대기). 업그레이드 뒤 plugin thread만 400이면 장수 broker/app-server의 구 바이너리를 의심한다.
+- **WSL·dev server:** 현재 네트워크 모드를 먼저 실측한다. localhost 문제에 과거 mirrored/netns 원인을 자동 적용하지 않는다. 서버는 `127.0.0.1`로 실제 브라우저에서 검증하고, 네트워크 변경 후 `system/netcheck.sh`를 실행한다. WSL 프리즈는 재시작 전 RAM/swap·kernel log부터 본다.
+- **Orca — 짜기 전에 공식 문서부터:** `~/main/system/orca-docs.sh guide orca-cli`(+`orchestration`), 정확한 플래그는 `orca-docs.sh cmd "worktree create"`. 가이드는 CLI에 번들돼 버전이 항상 맞으니 **md로 복사하지 말 것**(낡은 문서는 없는 것보다 나쁘다). 실행파일은 `ORCA_CLI_COMMAND` → 없으면 `orca-ide`(리눅스 bare `orca`는 GNOME 스크린리더). **워크트리는 사용자가 요청했거나 실제 체크아웃 충돌이 있을 때만** 만든다 — 병렬·독립·편의는 격리 사유가 아니며 fresh worker = 새 에이전트 터미널이지 새 워크트리가 아니다. 완료 감지는 마커 폴링이 아니라 orchestration `task-create`→`dispatch --inject`→`check --wait`, 준비 확인은 `terminal wait --for tui-idle`. *(2026-07-29: 이 줄에 이미 "orchestration이 정본"이라 적혀 있었는데 안 읽고 마커·nonce·폴링 감독을 재발명했다. 규칙을 읽는 것과 실행법을 아는 것은 다르다 → 그래서 도구 경로를 앞에 뒀다.)* WSL distro·UNC·worktree full ID·`CODEX_HOME` 복사본·vsock·등호형 flag 함정은 `/orca-trio`의 조건부 runbook에서 확인한다.
+- **문서·도구 특수형:** HWP/HWPX는 `system/doc2txt.sh`; ffmpeg는 `~/.claude/tools/headless/node_modules/ffmpeg-static`; 빌트인 slash/plugin 설치는 사용자가 직접 입력한다.

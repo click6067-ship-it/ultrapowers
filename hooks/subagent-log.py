@@ -8,10 +8,18 @@ agent_transcript_path의 assistant 메시지에서 파생: model, usage 합산, 
 """
 import json
 import os
+import re
 import sys
 import shutil
 import subprocess
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:  # 2026-07-29 감사: 서브에이전트 최종 메시지가 무마스킹으로 jsonl에 남고 있었다.
+    from redaction import redact
+except Exception:
+    def redact(s):
+        return s
 
 try:
     d = json.load(sys.stdin)
@@ -83,7 +91,7 @@ if not rec.get("agent_type") and d.get("subagent_type"):
     rec["agent_type"] = d["subagent_type"]
 lam = d.get("last_assistant_message")
 if isinstance(lam, str) and lam:
-    rec["last_message"] = lam[:200]
+    rec["last_message"] = redact(lam[:200])
 atp = d.get("agent_transcript_path")
 if atp:
     rec["agent_transcript_path"] = atp
@@ -108,7 +116,9 @@ except Exception:
 try:
     dur = rec.get("duration_ms") or 0
     if os.environ.get("CC_TOAST", "1") != "0" and dur > 60_000 and shutil.which("powershell.exe"):
-        at = rec.get("agent_type", "agent")
+        # PS 문자열에 f-string으로 직접 들어가므로 따옴표·백틱이 든 커스텀 에이전트명은
+        # 구문을 깬다 → 화이트리스트 정규화 (2026-07-29 감사).
+        at = re.sub(r"[^A-Za-z0-9_.:-]", "_", str(rec.get("agent_type", "agent")))[:40] or "agent"
         secs = int(dur / 1000)
         ps = (
             "Add-Type -AssemblyName System.Windows.Forms;"

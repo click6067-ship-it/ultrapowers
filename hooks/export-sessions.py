@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Claude Code 세션 JSONL → 사람이 읽는 markdown 로그 (증분 · 잠금 · prune).
 
-🤖/👤 무엇: ~/.claude/projects/*/*.jsonl 를 $COMMAND_CENTER/logs/ 의 세션별 .md + README 인덱스로 변환.
+🤖/👤 무엇: ~/.claude/projects/*/*.jsonl 를 ~/main/logs/ 의 세션별 .md + README 인덱스로 변환.
 의도: Stop 훅이 매 세션 종료 시 호출 — 전체 대화를 사람이 읽는 아카이브로 남김.
-언제: Stop 훅 자동 실행(또는 수동 `python3 $COMMAND_CENTER/system/export-sessions.py`).
+언제: Stop 훅 자동 실행(또는 수동 `python3 ~/main/system/export-sessions.py`).
 
 설계(2026-05-27 Codex 카운슬 반영):
 - **flock**: 단일 인스턴스. 동시 Stop 훅이 겹쳐도 레이스/부분쓰기 없음. 잠겨있으면 조용히 skip(다음 훅이 따라잡음).
@@ -11,11 +11,13 @@
 - **prune**: 원본 jsonl이 사라진 고아 .md만 삭제 — *이 exporter 네이밍 규칙*(`slug__date__sid.md`) + *매니페스트 추적분*만 대상(README·수기노트 보존).
 - 권한: umask 077 → logs/ 0700, .md 0600(raw jsonl과 동일). idempotent.
 """
-import json, os, glob, re, fcntl, pathlib
+import json, os, glob, re, fcntl, pathlib, sys
+
+from redaction import redact
 
 HOME = pathlib.Path.home()
 SRC = HOME / ".claude" / "projects"
-OUT = pathlib.Path(os.environ.get("COMMAND_CENTER") or (HOME / "main")) / "logs"   # COMMAND_CENTER env honored (기본 $COMMAND_CENTER)
+OUT = pathlib.Path(os.environ.get("COMMAND_CENTER") or (HOME / "main")) / "logs"   # COMMAND_CENTER env honored (기본 ~/main)
 MANIFEST = OUT / ".export-sessions.json"
 LOCK = OUT / ".export-sessions.lock"
 # HOME 파생 슬러그 prefix — recent-context.py key_to_logslug와 동일 규칙(로그 링크 일치).
@@ -57,7 +59,7 @@ def blocks_to_md(content):
 # 크리덴셜 마스킹(2026-05-31): export 아카이브에 시크릿 값 평문 저장 방지.
 # 값 시작이 '·@·( 등 특수문자여도 잡게 관대(과거 redact 누락 교훈). idempotent.
 _CRED_RE = re.compile(
-    r"""(appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
+    r"""(KIS_APP_KEY|KIS_APP_SECRET|KIS_CANO|KIS_ACCOUNT|KRX_ID|KRX_PW|DART_API_KEY|appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
     re.I,
 )
 
@@ -67,8 +69,7 @@ _BEARER_RE = re.compile(r"(?i)\b(bearer\s+)([A-Za-z0-9._~+/\-]{8,}=*)")
 
 def redact_secrets(text):
     """크리덴셜 값을 [REDACTED]로 마스킹 (key=value + Bearer 토큰)."""
-    text = _BEARER_RE.sub(lambda m: m.group(1) + "[REDACTED]", text)
-    return _CRED_RE.sub(lambda m: m.group(1) + m.group(2) + "[REDACTED]", text)
+    return redact(text)
 
 
 def atomic_write(path, text):
@@ -147,6 +148,13 @@ def main():
                                  "date": date, "slug": slug, "turns": len(turns)}
             reparsed += 1
 
+    # 소스 소실 가드 (2026-07-29 2백본 감사 MAJOR): 스캔이 0건인데 이전 매니페스트엔 항목이
+    # 있으면 SRC를 못 읽은 것(권한·마운트 순간 오류)이다. 그대로 진행하면 아래 prune이 추적 중인
+    # .md를 *전량* 지우고 매니페스트를 {}로 덮어쓴다. logs/는 gitignore라 git 복구 경로도 없다.
+    if manifest and not new_manifest:
+        sys.stderr.write("[export-sessions] 소스 스캔 0건 — prune·매니페스트 갱신 중단(아카이브 보존)\n")
+        return 0
+
     # prune: 매니페스트에 *있었으나* 이제 소스가 사라진 항목의 .md만 삭제(네이밍 규칙 매칭 한정).
     live_names = {e["name"] for e in new_manifest.values()}
     for key, e in manifest.items():
@@ -163,7 +171,7 @@ def main():
     # README 인덱스 = 매니페스트 전체로 재구성(스킵된 세션도 포함 — 드리프트 없음).
     index = sorted(((e["date"], e["slug"], e["turns"], e["name"]) for e in new_manifest.values()),
                    reverse=True)
-    idx_md = ("# 📜 세션 로그 (최신순)\n\n자동 생성(증분) — `python3 $COMMAND_CENTER/system/export-sessions.py` "
+    idx_md = ("# 📜 세션 로그 (최신순)\n\n자동 생성(증분) — `python3 ~/main/system/export-sessions.py` "
               "재실행으로 갱신.\n\n| 날짜 | 프로젝트 | turns | 파일 |\n|---|---|---|---|\n")
     for date, slug, n, name in index:
         idx_md += f"| {date} | {slug} | {n} | [{name}](./{name}) |\n"

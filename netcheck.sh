@@ -46,6 +46,15 @@ IDLE=$(grep -iE '^\s*vmIdleTimeout' "$WSLCONF" 2>/dev/null | cut -d= -f2 | tr -d
 record "MODE: networkingMode=${MODE:-NAT(기본)} vmIdleTimeout=${IDLE:-미설정} uptime=$(awk '{printf "%.0fm",$1/60}' /proc/uptime)"
 
 # ── 1. WSL 루프백: 테스트 서버 스핀업 → 127.0.0.1 ──
+SRV=""
+cleanup_server() {
+  [ -n "$SRV" ] || return 0
+  kill "$SRV" 2>/dev/null
+  wait "$SRV" 2>/dev/null
+  SRV=""
+}
+trap cleanup_server EXIT
+
 PORT=""
 for p in 18930 18931 18932 18933; do
   ss -tlnH 2>/dev/null | grep -q ":$p\b" || { PORT=$p; break; }
@@ -53,7 +62,7 @@ done
 if [ -z "$PORT" ]; then
   check loopback_server 1 "테스트 포트 18930-18933 전부 사용중"
 else
-  python3 -m http.server "$PORT" --bind 0.0.0.0 --directory /tmp >/dev/null 2>&1 &
+  python3 -m http.server "$PORT" --bind 127.0.0.1 --directory /tmp >/dev/null 2>&1 &
   SRV=$!
   curl -s --retry 10 --retry-connrefused --retry-delay 1 --max-time 2 -o /dev/null "http://127.0.0.1:$PORT"
   out=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$PORT" 2>&1)
@@ -68,7 +77,7 @@ else
   else
     record "win_localhost: SKIP (curl.exe interop 없음)"
   fi
-  kill "$SRV" 2>/dev/null; wait "$SRV" 2>/dev/null
+  cleanup_server
 fi
 
 # ── 3. DNS ×10 (역대 두더지 #1 — dnsTunneling이 보완 중인지) ──

@@ -11,17 +11,17 @@ description: Use when the user says 배포해/배포까지/푸시하고 배포/�
 
 ### 1. 검증 게이트 (증거 없이 배포 없음)
 ```bash
-bash $COMMAND_CENTER/system/verify.sh   # 스택 감지 → test·typecheck·lint·build
+bash ~/main/system/verify.sh   # 스택 감지 → test·typecheck·lint·build
 ```
-FAIL이면 **여기서 멈추고 보고** — "일단 배포"는 없다. (사용자가 명시적으로 "검증 스킵"하면 스킵을 기록하고 진행.)
+FAIL이면 **여기서 멈추고 보고** — "일단 배포"는 없다. 사용자가 "검증 스킵"을 요청해도 ship은 진행하지 않고 `NOT_VERIFIED`로 종료한다 — **결정론 게이트는 항상 적용된다**(`rules/routing.md`). 검증 없이 내보내야 하면 ship 체인 밖에서 사용자가 직접 한다. *(2026-07-29 감사 BLOCKER: 같은 문장 안에서 게이트를 한마디로 우회시키고 있었다.)*
 
 ### 2. 커밋 (함정 체크 내장)
-- **author 이메일 확인** (Vercel 미스매치 차단 이력): `git log -3 --format=%ae` — 기존 배포 이메일과 다르면 멈추고 확인. 기본 신원 = `click6067-ship-it <you@example.com>`.
-- **`git diff --shortstat` 확인** — `NNN files, 0 insertions(+)`(deletions-only)면 truncate 손상 신호 → 멈춤 (2026-07-07 $COMMAND_CENTER 사고 교훈).
+- **author 이메일 확인** (Vercel 미스매치 차단 이력): `git log -3 --format=%ae` — 기존 배포 이메일과 다르면 멈추고 확인. 기본 신원 = `click6067-ship-it <click6067@gmail.com>`.
+- **`git diff --shortstat` 확인** — `NNN files, 0 insertions(+)`(deletions-only)면 truncate 손상 신호 → 멈춤 (2026-07-07 ~/main 사고 교훈).
 - **의도한 경로만 add** (`git add -A` 금지 — 샌드박스 /dev/null 마스크 함정). 커밋 메시지는 변경 요약으로.
 
 ### 3. 푸시
-- force-push 금지(guardrail이 어차피 차단). 현재 브랜치 → origin. main/master 직푸시는 이 repo의 기존 관행을 따른다(관행 불명이면 확인).
+- force-push 금지 — **guardrail은 main/master와 bare force만 차단한다.** 원격·브랜치를 명시한 피처 브랜치 force는 통과하므로 스스로 금지한다. 현재 브랜치 → origin. main/master 직푸시는 이 repo의 기존 관행을 따른다(관행 불명이면 확인).
 
 ### 4. 배포 (프로젝트 타입 자동 감지)
 | 감지 | 행동 |

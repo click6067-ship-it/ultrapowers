@@ -24,7 +24,7 @@ curl -sS -o /dev/null -w "%{http_code} %{time_total}s" http://127.0.0.1:<port>/
 순서대로 실행하고 결과를 함께 보고:
 ```bash
 netsh.exe interface portproxy show all   # ① 포트 섀도잉 1순위 (NAT 잔재 규칙이 점유 — :3000 실증)
-bash $COMMAND_CENTER/system/netcheck.sh           # ② 네트워크 회귀 매트릭스 (~3초, 실제 netns)
+bash ~/main/system/netcheck.sh           # ② 네트워크 회귀 매트릭스 (~3초, 실제 netns)
 ss -ltn                                  # ③ 실제 바인딩 확인 (WSL쪽)
 ```
 - ①에서 172.20.x 타깃 규칙 발견 = iphlpsvc 점유 → elevated `netsh interface portproxy delete`로 해결(사용자 안내).

@@ -12,7 +12,7 @@ description: Use when the user says 기획서 분해/스펙 분해/decompose spe
 - **writing-plans = plan/task 소유** — "어떻게 구현". child spec은 plan prose를 쓰지 않는다.
 - 이 경계가 흐려지면 = 예전에 제거한 "두 번째 프레임워크" 재현 = 즉시 롤백.
 
-**정본.** 절차 정본 = 이 SKILL.md (자기완결적, clone-anywhere). 설계 근거·kickoff 회의록은 작성자 노트(`$COMMAND_CENTER/projects/spec-decompose-design.md`, 기본 `$COMMAND_CENTER`)에 있으나 *스킬 동작에 필수 아님* — 없어도 스킬은 돈다.
+**정본.** 절차 정본 = 이 SKILL.md (자기완결적, clone-anywhere). 설계 근거·kickoff 회의록은 작성자 노트(`$COMMAND_CENTER/projects/spec-decompose-design.md`, 기본 `~/main`)에 있으나 *스킬 동작에 필수 아님* — 없어도 스킬은 돈다.
 
 ---
 

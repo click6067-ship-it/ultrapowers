@@ -15,7 +15,7 @@ description: Use when the user says 기억해/기억해둬/remember this/메모�
 1. **타입 판정** (`metadata.type`): `user`(사용자 정체성·선호) / `feedback`(작업 방식 지침 — 교정·확인된 접근) / `project`(진행 작업·목표·제약) / `reference`(외부 리소스 포인터). 애매하면 묻는다.
 2. **대상 키 결정** (경로 키잉: 작업경로의 `/`·`.`를 `-`로):
    - 현재 작업 폴더에 한정된 사실 → 현재 cwd 키 `~/.claude/projects/<키>/memory/`
-   - 전역·메타·사용자·작업방식 사실 → **두뇌 키**(= `$COMMAND_CENTER`을 경로 키잉한 값: `/`·`.`→`-`). 이 머신=`-home-USER-main` → `~/.claude/projects/-home-USER-main/memory/`. (다른 머신은 `$HOME` 따라 달라짐 — 확인: `ls ~/.claude/projects/ | grep -- -main`.)
+   - 전역·메타·사용자·작업방식 사실 → **두뇌 키**(= `~/main`을 경로 키잉한 값: `/`·`.`→`-`). 이 머신=`-home-click-main` → `~/.claude/projects/-home-click-main/memory/`. (다른 머신은 `$HOME` 따라 달라짐 — 확인: `ls ~/.claude/projects/ | grep -- -main`.)
    - 확신 없으면 둘 중 어디인지 사용자에 확인.
 3. **중복 확인 먼저**: 같은 사실의 기존 파일이 있으면 새로 만들지 말고 **그 파일을 갱신**(`grep -ril <키워드> <memory dir>`).
 4. **파일 작성** (kebab-case 슬러그):
@@ -30,16 +30,12 @@ description: Use when the user says 기억해/기억해둬/remember this/메모�
    <사실. feedback/project면 **Why:** 와 **How to apply:** 줄 추가. 관련 메모리는 [[slug]]로 링크.>
    ```
 5. **인덱스 갱신**: 같은 memory 디렉토리의 `MEMORY.md`에 한 줄 추가(`- [제목](파일.md) — 후크`). 없으면 생성.
-6. **git 미러 + 커밋** (선택 — command-center에 sync.sh와 git repo가 있을 때만. 없으면 조용히 넘어가지 말고 skip 사유를 한 줄로 알린다):
+6. **git 미러 + 커밋**:
    ```bash
-   if [ -f "$COMMAND_CENTER/system/dotclaude/sync.sh" ] && [ -d "$COMMAND_CENTER/.git" ]; then
-     bash "$COMMAND_CENTER/system/dotclaude/sync.sh" >/dev/null
-     git -C "$COMMAND_CENTER" log -3 --format=%ae      # ← author 이메일 확인(반복 함정)
-     git -C "$COMMAND_CENTER" add system/memory-snapshot \
-       && git -C "$COMMAND_CENTER" -c user.email="<확인된 이메일>" commit -m "mem: <요약>"
-   else
-     echo "ℹ️ git 미러 skip: $COMMAND_CENTER 에 sync.sh/git repo 없음 — 메모리는 ~/.claude/projects/<키>/memory/ 에 저장 완료"
-   fi
+   bash ~/main/system/dotclaude/sync.sh >/dev/null
+   git -C ~/main log -3 --format=%ae        # ← author 이메일 확인(반복 함정)
+   # add는 메모리 스냅샷 경로만 — add -A 금지(무관한 미커밋 변경을 mem: 커밋에 휩쓸어 넣는 사고 방지, 2026-07-03 감사)
+   git -C ~/main add system/memory-snapshot && git -C ~/main -c user.email="<확인된 이메일>" commit -m "mem: <요약>"
    ```
 
 ## 규칙 (FitLLM 정확도·메모리 규율)

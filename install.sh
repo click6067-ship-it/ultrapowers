@@ -16,22 +16,16 @@ backup "$DST/CLAUDE.md"; cp "$SRC/CLAUDE.md" "$DST/CLAUDE.md"
 echo "▶ Codex 전역 헌법 AGENTS.md (~/.codex/AGENTS.md — 2모델 org의 Codex 절반, CLAUDE.md 대칭짝)"
 if [ -f "$SRC/AGENTS.md" ]; then mkdir -p "$HOME/.codex"; backup "$HOME/.codex/AGENTS.md"; cp "$SRC/AGENTS.md" "$HOME/.codex/AGENTS.md"; fi
 
-echo "▶ 커스텀 스킬 9 (vcheck·demo·kickoff·recall·remember·techreport·qualityloop·ship·serve) + 디렉토리형 4(아래) = 13"
-for s in vcheck demo kickoff recall remember techreport qualityloop autopilot ship serve; do
-  if [ -f "$SRC/skills/$s/SKILL.md" ]; then mkdir -p "$DST/skills/$s"; cp "$SRC/skills/$s/SKILL.md" "$DST/skills/$s/SKILL.md"; fi
-done
-
-echo "▶ 디렉토리형 스킬: spec-decompose(tools+templates) · specpack(templates) · crit(references)"
-for s in spec-decompose specpack crit; do
-  if [ -d "$SRC/skills/$s" ]; then
-    backup "$DST/skills/$s"; rm -rf "$DST/skills/$s"
-    cp -r "$SRC/skills/$s" "$DST/skills/$s"
-    find "$DST/skills/$s" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
-  fi
+echo "▶ 커스텀 스킬 전수 설치 (v0.6: 17종 — kickoff·orca-trio·race·newproject·hallmark 포함)"
+for sdir in "$SRC"/skills/*/; do
+  s="$(basename "$sdir")"
+  backup "$DST/skills/$s"; rm -rf "$DST/skills/$s"
+  cp -r "$sdir" "$DST/skills/$s"
+  find "$DST/skills/$s" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 done
 
 echo "▶ hooks → ~/.claude/hooks/ (위치 독립)"
-for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py subagent-log.py devlog.py uislop-check.py; do
+for h in recent-context.py export-sessions.py session-end-summary.py techreport-autopush.py subagent-log.py devlog.py uislop-check.py skill-nudge.py skill-usage-log.py orca-trio-guard.py session-end-runner.py redaction.py; do
   if [ -f "$SRC/hooks/$h" ]; then cp "$SRC/hooks/$h" "$DST/hooks/$h"; chmod +x "$DST/hooks/$h"; fi
 done
 
@@ -109,3 +103,12 @@ cat <<NEXT
    3) 로그인:  claude(OAuth) · codex login(ChatGPT) · vercel /mcp
    ※ 두 모델 워크플로라 Claude Max + Codex Pro 가정.
 NEXT
+
+echo "▶ verify.sh (NOT_VERIFIED 계약: 실행 check 0개면 PASS가 아니라 exit 2)"
+[ -f "$SRC/verify.sh" ] && { cp "$SRC/verify.sh" "$CC/system/verify.sh" 2>/dev/null || cp "$SRC/verify.sh" "$DST/verify.sh"; }
+
+echo "▶ orca/ (선택 레이어 — Windows Orca ADE + WSL에서만 의미. 자동 설치하지 않음)"
+echo "  Orca 사용 시: orca/README 격인 주석과 $SRC/orca/ 스크립트를 COMMAND_CENTER/system/ 에 복사 후"
+echo "  orca/orca-docs.sh guide orca-cli 로 설치본 라이브 가이드부터 읽을 것."
+
+echo "✅ install 완료. 다음 수동 단계: (1) ~/.secrets/api-keys.env 생성(chmod 600) (2) Claude Code 로그인 (3) codex 로그인"

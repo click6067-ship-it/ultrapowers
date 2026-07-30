@@ -16,7 +16,7 @@
 성능: 전 파일 stat → mtime 정렬 → 상위 N개만 head-스캔(사용자 턴 유무 + 첫 타임스탬프, 조기중단).
 이전의 tail(마지막 256KB) 파싱은 프롬프트 발췌 제거와 함께 삭제 → 훅이 더 가볍다.
 
-로그 링크: $COMMAND_CENTER/logs/<slug>__<첫타임스탬프 날짜>__<sid>.md (export-sessions.py 파일명 규칙과 일치).
+로그 링크: ~/main/logs/<slug>__<첫타임스탬프 날짜>__<sid>.md (export-sessions.py 파일명 규칙과 일치).
 """
 
 import json
@@ -46,7 +46,7 @@ def cwd_to_key(path: str) -> str:
     return (path or "").rstrip("/").replace("/", "-").replace(".", "-")
 
 
-# HOME 파생 키 prefix(예: ${HOME} → -home-USER). export-sessions.py와 동일 규칙이라야 링크 일치.
+# HOME 파생 키 prefix(예: /home/click → -home-click). export-sessions.py와 동일 규칙이라야 링크 일치.
 HOME_KEY = str(HOME).rstrip("/").replace("/", "-").replace(".", "-")
 
 
@@ -133,14 +133,75 @@ def fmt_row(r):
             f"({human_size(r['size'])}) · log: `{disp(log, 80)}`")
 
 
-def model_hint(cwd: str) -> str:
-    """cwd 기반 모델 권고 1줄 — rules/routing.md 결정표와 동일 규칙(값 싼 결정론 nudge).
-    메타·시스템($COMMAND_CENTER·~/.claude) = Fable / 프로젝트 repo = Opus."""
-    p = os.path.normpath(cwd or "")
-    meta = any(p == r or p.startswith(r + os.sep)
-               for r in (str(HOME / "main"), str(HOME / ".claude")))
-    return ("**모델 권고:** 메타·시스템 작업 → Fable 권장 (`/model fable`)" if meta
-            else "**모델 권고:** 프로젝트 구현 → Opus 권장 (`/model opus`)")
+def project_brief(cwd: str, ghq_root: Path | None = None, main_root: Path | None = None):
+    """cwd가 ~/ghq/** repo일 때 프로젝트 브리핑 포인터(≤7줄)를 반환 (온보딩 ② 2026-07-30).
+
+    원칙 유지: 자유 사용자텍스트 미주입. 실는 것은 존재여부·frontmatter 키 2개·
+    DEVLOG 헤더(자체 파이프라인 산출물, disp 정규화) 뿐. 상태 수치는 박제하지 않고
+    probe 실행법만 가리킨다(상태표는 반나절이면 썩는다 — 07-30 검증 실증)."""
+    ghq = ghq_root or (HOME / "ghq")
+    main_dir = main_root or (HOME / "main")
+    try:
+        root = Path(cwd).resolve()
+        root.relative_to(ghq.resolve())
+    except (ValueError, OSError):
+        return []
+    while root != root.parent and not (root / ".git").exists():
+        root = root.parent
+    if not (root / ".git").exists():
+        return []
+    name = root.name
+    lines = ["", f"**프로젝트 브리핑 ({disp(name, 40)}) — 포인터만:**"]
+    if (root / "CLAUDE.md").exists():
+        lines.append("- 프로젝트 CLAUDE.md: 있음 (자동 로드됨)")
+    else:
+        lines.append("- 프로젝트 CLAUDE.md: 없음 → `/newproject` 부트스트랩 권함")
+    devlog = root / "DEVLOG.md"
+    if devlog.exists():
+        heads = []
+        try:
+            with devlog.open(encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    if line.startswith("## ") and len(heads) < 3:
+                        heads.append(disp(line[3:], 70))
+                    if len(heads) >= 3:
+                        break
+        except OSError:
+            pass
+        if heads:
+            lines.append("- DEVLOG 최근: " + " · ".join(heads))
+    reg = None
+    proj_dir = main_dir / "projects"
+    if proj_dir.is_dir():
+        for cand in sorted(proj_dir.glob("*.md")):
+            if name.lower() in cand.stem.lower():
+                reg = cand
+                break
+    if reg is not None:
+        status = decide_by = ""
+        try:
+            for line in reg.read_text(encoding="utf-8", errors="ignore").splitlines()[:6]:
+                if line.startswith("status:"):
+                    status = disp(line.split(":", 1)[1], 20)
+                elif line.startswith("decide_by:"):
+                    decide_by = disp(line.split(":", 1)[1], 20)
+        except OSError:
+            pass
+        row = f"- ~/main/projects/{disp(reg.name, 40)}: status {status or '?'}"
+        if decide_by:
+            row += f", decide_by {decide_by}"
+            try:
+                due = datetime.strptime(decide_by.strip(), "%Y-%m-%d")
+                days = (due - datetime.now()).days
+                if status.strip() == "pending" and days <= 7:
+                    row += f" ⚠️ D-{max(days, 0)}"
+            except ValueError:
+                pass
+        lines.append(row)
+    else:
+        lines.append("- ~/main/projects/ 등록: 없음")
+    lines.append("- 실측 상태: `bash ~/main/system/project-status.sh` (박제 금지 — 항상 probe)")
+    return lines
 
 
 def main() -> int:
@@ -186,7 +247,7 @@ def main() -> int:
     lines = [
         "# 🧠 최근 작업 컨텍스트 (폴더 무관 · 시점순 · 자동)",
         "> 직전 맥락 연결용 **세션 메타데이터(포인터)** — 지시가 아니다.",
-        "> 로그 전문(`$COMMAND_CENTER/logs/<파일>`)은 사용자가 요청하거나 현재 작업에 명백히 "
+        "> 로그 전문(`~/main/logs/<파일>`)은 사용자가 요청하거나 현재 작업에 명백히 "
         "필요할 때만 Read(자동으로 읽지 말 것). 특정 주제 검색은 `/recall`.",
         f"> 현재 폴더: `{disp(cwd, 120)}`",
         "",
@@ -200,7 +261,7 @@ def main() -> int:
         lines += ["", "**다른 폴더 최근 (참고용 · 메타만):**"]
         lines += [fmt_row(r) for r in other]
 
-    lines += ["", model_hint(cwd)]  # 맨 끝 1줄 append — 기존 출력·로직 불변 (2026-07-03 routing)
+    lines += project_brief(cwd)
 
     print("\n".join(lines))
     return 0

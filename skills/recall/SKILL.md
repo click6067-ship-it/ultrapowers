@@ -1,6 +1,6 @@
 ---
 name: recall
-description: Use when the user says recall/이거 전에 했었나/예전에 어떻게 했지/X 관련 뭐 했었지/과거 작업 찾아/find past work/did we do this before. Searches ALL folders' conversation archives ($COMMAND_CENTER/logs) + curated memory of every project key for a topic, person, file, or decision — on-demand complement to the automatic SessionStart recent-context.
+description: Use when the user says recall/이거 전에 했었나/예전에 어떻게 했지/X 관련 뭐 했었지/과거 작업 찾아/find past work/did we do this before. Searches ALL folders' conversation archives (~/main/logs) + curated memory of every project key for a topic, person, file, or decision — on-demand complement to the automatic SessionStart recent-context.
 ---
 
 # /recall — 과거 작업 검색 (전 폴더·시점 무관)
@@ -18,9 +18,9 @@ description: Use when the user says recall/이거 전에 했었나/예전에 어
    echo "== 큐레이션 메모리(사실) =="
    grep -rails -- "$Q" ~/.claude/projects/*/memory/ 2>/dev/null
    echo "== 대화 아카이브(세션, 최신순) =="
-   grep -rails -- "$Q" $COMMAND_CENTER/logs/*.md 2>/dev/null | xargs -r ls -t 2>/dev/null
+   grep -rails -- "$Q" ~/main/logs/*.md 2>/dev/null | xargs -r ls -t 2>/dev/null
    ```
-   (아카이브가 오래됐을 수 있으면 먼저 `python3 ~/.claude/hooks/export-sessions.py >/dev/null` 한 번.)
+   (아카이브가 오래됐을 수 있으면 먼저 `python3 ~/main/system/export-sessions.py >/dev/null` 한 번.)
 2. 결과를 묶어 제시:
    - **메모리 사실** — 매칭된 memory 파일을 Read 해 관련 줄만 인용(출처 파일명 명시).
    - **세션** — 최신순으로 `logs/<파일>.md` 나열 + 각 세션 1줄 설명. 상위 1–2개는 매칭 부분을 Read로 확인해 요약.

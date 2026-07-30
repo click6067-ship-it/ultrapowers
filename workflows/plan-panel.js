@@ -1,68 +1,104 @@
 export const meta = {
   name: 'plan-panel',
-  description: '하나의 task를 여러 각도로 블라인드 plan 초안(병렬) → 각 초안 적대 리뷰·점수 → 최고안 종합(타 초안 장점 이식). 어려운 결정·고비용 빌드 전. args = task(문자열).',
+  description: 'Single-backbone lightweight panel for medium-stakes planning. It is not the multi-backbone kickoff Council. args=task.',
   phases: [
-    { title: 'Draft', detail: '각도별 블라인드 초안' },
-    { title: 'Review', detail: '적대 리뷰 + 점수' },
-    { title: 'Synthesize', detail: '최고안 종합' },
+    { title: 'Explore', detail: '제약 없이 독립 아이디어 발산' },
+    { title: 'Harden', detail: 'barrier 뒤 주장·근거·kill condition 생성과 반증' },
+    { title: 'Synthesize', detail: '비옹호자 spec seed' },
   ],
 }
 
-const PLAN = {
+const DRAFT = {
   type: 'object',
   properties: {
-    approach: { type: 'string' },
-    steps: { type: 'array', items: { type: 'string' } },
-    risks: { type: 'array', items: { type: 'string' } },
-    cut: { type: 'string' },
+    problem: { type: 'string' },
+    hypothesis: { type: 'string' },
+    approaches: { type: 'array', items: { type: 'string' } },
+    usefulSurprises: { type: 'array', items: { type: 'string' } },
+    nonGoals: { type: 'array', items: { type: 'string' } },
+    unknowns: { type: 'array', items: { type: 'string' } },
   },
-  required: ['approach', 'steps'],
+  required: ['problem', 'hypothesis', 'approaches', 'usefulSurprises', 'nonGoals', 'unknowns'],
 }
-const REVIEW = {
+
+const HARDENED = {
   type: 'object',
   properties: {
-    score: { type: 'number' },
-    failures: { type: 'array', items: { type: 'string' } },
-    verdict: { type: 'string' },
+    claims: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          candidateId: { type: 'string' },
+          text: { type: 'string' },
+          evidenceStatus: { type: 'string' },
+          killCondition: { type: 'string' },
+          verdict: { type: 'string' },
+          why: { type: 'string' },
+        },
+        required: ['id', 'candidateId', 'text', 'evidenceStatus', 'killCondition', 'verdict', 'why'],
+      },
+    },
+    disagreements: { type: 'array', items: { type: 'string' } },
+    premortem: { type: 'array', items: { type: 'string' } },
+    deliberateCuts: { type: 'array', items: { type: 'string' } },
   },
-  required: ['score'],
+  required: ['claims', 'disagreements', 'premortem', 'deliberateCuts'],
 }
 
-const task = (typeof args === 'string' && args) ? args : (args && args.task) ? args.task : null
-if (!task) throw new Error('plan-panel: args로 task(문자열)를 넘겨야 함 — 무입력 fan-out 방지')
+const SPEC_SEED = {
+  type: 'object',
+  properties: {
+    problem: { type: 'string' },
+    chosen: { type: 'array', items: { type: 'string' } },
+    rejected: { type: 'array', items: { type: 'string' } },
+    deferred: { type: 'array', items: { type: 'string' } },
+    disagreements: { type: 'array', items: { type: 'string' } },
+    nonGoals: { type: 'array', items: { type: 'string' } },
+    metrics: { type: 'array', items: { type: 'string' } },
+    userGateQuestions: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['problem', 'chosen', 'rejected', 'deferred', 'disagreements', 'nonGoals', 'metrics', 'userGateQuestions'],
+}
 
-const ANGLES = ['MVP·최소기능 우선', '리스크·실패모드 우선', '사용자가치 우선', '가장 단순한 해법']
-// Draft→Review는 초안별 독립 체인 — 배리어 없이 pipeline (먼저 끝난 초안부터 즉시 리뷰)
-const reviewed = (await pipeline(
-  ANGLES,
-  (a) => agent(
-    `Draft an implementation plan for the task, from THIS angle only: "${a}".\nTask: ${task}\n` +
-    `Give: approach, concrete steps, top risks, and one deliberate cut/defer.`,
-    { schema: PLAN, label: `draft:${a}`, phase: 'Draft' },
-  ),
-  (d, a) => agent(
-    `Adversarially review this plan. Find failure modes, wrong scope, unstated assumptions. Score 0-100 (be harsh).\n` +
-    `Plan: ${JSON.stringify(d)}`,
-    { schema: REVIEW, label: `review:${a}`, phase: 'Review' },
-  ).then((r) => ({ draft: d, review: r })),
-)).filter(Boolean)
-if (!reviewed.length) throw new Error('plan-panel: 모든 draft/review 실패 — 종합할 초안 없음 (빈 근거 계획 생성 방지)')
-const ranked = reviewed.sort((a, b) => (b.review.score || 0) - (a.review.score || 0))
-log(`best score: ${ranked[0] && ranked[0].review.score}`)
+const task = typeof args === 'string' && args ? args : args && args.task
+if (!task) throw new Error('plan-panel: args로 task를 넘겨야 함')
+
+const lenses = [
+  '사용자의 실제 문제와 최소 메커니즘',
+  '전혀 다른 사용자 여정과 가치 제안',
+  '기능을 늘리지 않고 문제를 없애는 삭제·운영 대안',
+]
+
+phase('Explore')
+const drafts = (await parallel(lenses.map((lens, index) => () =>
+  agent(
+    `Independent P${index + 1}; never inspect siblings.\nOriginal task: ${task}\nLens: ${lens}\n` +
+    'Explore before evaluating. Generate genuinely different approaches and useful surprises. ' +
+    'Do not add kill conditions, premortems, scores, or criticism yet. Do not edit files.',
+    { schema: DRAFT, label: `explore:P${index + 1}`, phase: 'Explore' },
+  ).then((draft) => ({ candidateId: `P${index + 1}`, lens, draft }))
+))).filter(Boolean)
+
+if (drafts.length < 2) throw new Error('plan-panel: 유효 독립 후보 2개 미만 — 종합 금지')
+const anonymous = drafts
+
+phase('Harden')
+const hardened = await agent(
+  `Fresh adversarial analyst. Original task: ${task}\n` +
+  'The exploration barrier has passed. Convert proposals into falsifiable claims, attach evidence status ' +
+  'and kill conditions, then try to refute them. Add 3+ premortems and deliberate cuts. ' +
+  'Preserve unresolved disagreements and do not force a scalar winner.\n' +
+  `Anonymous candidates: ${JSON.stringify(anonymous)}`,
+  { schema: HARDENED, label: 'fresh-hardener', phase: 'Harden' },
+)
 
 phase('Synthesize')
-const final = await agent(
-  `Synthesize ONE best plan for the task. Base it on the highest-scored draft, graft the strongest ideas from the others, ` +
-  `and resolve the failure modes the reviews raised. State explicitly in the final plan which draft ideas were chosen, rejected, and deferred (chosen/rejected/deferred). ` +
-  `Your final text IS the plan artifact returned to the caller — ` +
-  `no greetings or meta commentary, start directly with the plan.\nTask: ${task}\nRanked drafts + reviews:\n` +
-  ranked.map((r) =>
-    `[score ${r.review.score}] approach: ${r.draft.approach}\n` +
-    `  steps: ${(r.draft.steps || []).join(' | ')}\n` +
-    `  risks: ${(r.draft.risks || []).join('; ')}\n` +
-    `  cut: ${r.draft.cut || '-'}\n` +
-    `  failures: ${(r.review.failures || []).join('; ')}`
-  ).join('\n'),
-  { label: 'synthesize', phase: 'Synthesize' },
+return agent(
+  `Fresh non-advocate synthesizer. Original task: ${task}\n` +
+  'Use only claims that survived hardening. Never hide disagreement or turn unknown into consensus. ' +
+  'Produce a small spec seed, not code, and leave ADOPT/PIVOT/STOP to the user.\n' +
+  `Candidates: ${JSON.stringify(anonymous)}\nHardening: ${JSON.stringify(hardened)}`,
+  { schema: SPEC_SEED, label: 'non-advocate-synthesis', phase: 'Synthesize' },
 )
-return final
