@@ -16,6 +16,8 @@ Claude plans and writes. A model from a *different lab* attacks the pinned commi
 define → research → plan → build → verify → cross-lab review → ship → report
 ```
 
+**[Why](#why-this-exists)** · **[Does it work?](#does-cross-lab-review-actually-catch-anything-measured-not-marketing)** · **[Highlights](#highlights)** · **[Architecture](#architecture)** · **[Skills](#skills)** · **[Install](#install)** · **[Changelog](CHANGELOG.md)**
+
 </div>
 
 ---
@@ -50,27 +52,211 @@ Only round 5 got an `APPROVE`. **Diversity catches what redundancy cannot** — 
 - 🔁 **Fire-drilled failure semantics** — worker kill auto-recovers, duplicate/late `worker_done` can't corrupt state, app restart preserves everything (8/8 restart drill).
 - 🔒 **Secrets by env-var name only** — no keys in configs; no-cloud locks ship in the settings template.
 
-## Operating contracts — what makes it a crew, not just terminals
+---
 
-- **Single ownership**: Orca owns lifecycle; git owns code; real test output owns "works"; the user owns decisions. No two systems own the same state.
+# Architecture
+
+## 1. Layers — who owns what
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ L0  USER                                                    │
+│     problem definition · risk approval · final call         │
+│     (ADOPT / PIVOT / STOP)                                  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│ L1  COORDINATOR   (a role contract — not a fixed model)     │
+│     read-only · builds the DAG · assigns scope · barriers   │
+│     · cross-checks evidence                                 │
+│     ✗ never edits product files                             │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ task-create → dispatch --inject
+┌──────────────────────────▼──────────────────────────────────┐
+│ L2  ORCA ORCHESTRATION      ★ source of truth for lifecycle │
+│     task · dispatch · worker_done · deps · gates · retries  │
+│     (survives an app restart — verified 8/8)                │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+      ┌────────────────────┼────────────────────┐
+      ▼                    ▼                    ▼
+┌────────────┐      ┌─────────────┐     ┌────────────────┐
+│ L3 WRITER  │      │ L3 REVIEWER │     │ L3 JUDGE       │
+│ exactly 1  │      │ read-only   │     │ blind scoring  │
+│ per worktree│     │ pinned commit│    │ (race /        │
+│            │      │ ★ other lab │     │  qualityloop)  │
+└─────┬──────┘      └──────┬──────┘     └────────────────┘
+      │                    │
+      ▼                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ L4  SUBAGENTS — short, bounded, read-only lookups inside    │
+│     a single worker (never a substitute for cross-lab)      │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ L5  SOURCES OF TRUTH  (overlap guarantees drift)            │
+│   git commit ········ what the code is                      │
+│   real test output ·· whether it works                      │
+│   artifact ledger ··· sealed hashes · claims · scores       │
+│   user gate ········· what gets adopted                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 2. Execution plane — the Windows ↔ WSL boundary
+
+The distinctive part of running on Orca, and the place two real defects were found and fixed.
+
+```text
+Windows
+├── Orca ADE (the app)                 ← owns terminals, worktrees, lifecycle
+│     └─ spawns ──▶ WSL2 terminals
+│                    ├─ Coordinator (Claude Code)
+│                    ├─ Writer      (Claude Code)
+│                    └─ Reviewer    (Codex CLI)
+│
+└── orca.exe (the CLI binary)
+      ▲
+      │   CLI call path: WSL ──▶ Windows
+      │
+   orca-wsl-bridge.ps1   ← PowerShell 5.1
+      ▲                     ① repairs the duplicate PATH/Path env key
+      │                        (upstream bug — defense in depth)
+      │                     ② rebuilds argv by CommandLineToArgvW rules
+      │                        (PS 5.1 silently eats embedded quotes)
+   orca-ide (bash wrapper)
+      ▲                     ships argv as one JSON→Base64 value, intact
+      │
+   WSL2 Linux (ext4)
+      ├── ~/main             ← command center (meta hub)
+      ├── ~/ghq/<owner>/…    ← project repos
+      └── ~/.claude ~/.codex ← the global agent system
+```
+
+**Design call:** the repo stays on ext4 inside WSL. The problem was never "Linux tooling"; it was bridge stability — so the bridge got fixed instead of moving code to a slower filesystem.
+
+## 3. Instruction loading — what a session actually gets
+
+```text
+session start
+   │
+   ├─ always loaded (global)
+   │    CLAUDE.md                    the constitution
+   │    rules/*.md            (6)    phase0-gate · work-loop
+   │                                 session-memory · pitfalls
+   │                                 routing · judgment
+   │    ↳ trimmed ~76% (30,397B → 7,320B); detail moved to
+   │      conditional runbooks read only on symptom match
+   │
+   ├─ path-scoped
+   │    rules/design-antislop.md     only when editing CSS/TSX
+   │    <project>/CLAUDE.md          only in that repo
+   │
+   └─ SessionStart hook (recent-context.py)
+        ├─ recent-session pointers  (metadata only — never prompt text)
+        └─ project brief (in a project repo)
+             CLAUDE.md present? · last 3 DEVLOG headers
+             registration status · deadline warning (D-7)
+             + "run the probe for live state" (never bake state)
+```
+
+Two rules make this safe and cheap: **no free text is ever injected** (pointers only — blocks prompt-injection and context leakage), and **state is probed, never baked into docs** (a baked status table was measured going stale within half a day).
+
+## 4. Hook wiring — the enforcement layer
+
+```text
+PreToolUse
+ ├─ [Bash]               guardrail.py        blocks catastrophic commands (77 cases)
+ ├─ [Agent|Task|Workflow] orca-trio-guard.py  prevents crew misuse
+ ├─ [Skill]              skill-usage-log.py  usage counters (async)
+ └─ [*]                  Orca bridge hook
+
+PostToolUse
+ ├─ [Edit|Write]         uislop-check.py     instant UI-slop feedback
+ └─ [*]                  Orca bridge hook
+
+UserPromptSubmit  →  skill-nudge.py (situation → skill) + trio guard
+SubagentStop      →  subagent-log.py (cost telemetry: model · tokens · duration)
+Stop              →  export-sessions.py (transcript archive, async) + nudge
+SessionStart      →  recent-context.py
+SessionEnd        →  session-end-runner.py (serialized pipeline)
+                      ├─ session summary
+                      ├─ devlog  (per-repo DEVLOG.md)
+                      └─ memory mirror, scoped commit
+```
+
+Protection is **two-layer**: `guardrail.py` (pattern deny) *and* an OS sandbox (bubblewrap, fail-closed). Either one failing still leaves the other.
+
+## 5. Task routing — when to reach for what
+
+```text
+                     work arrives
+                          │
+           ┌──────────────┴──────────────┐
+     clear · reversible            ambiguous or expensive
+     · small                             │
+           │                       judge the stakes
+      just do it                         │
+      + related tests      ┌──────────────┼──────────────┐
+                          low          medium          high
+                           │              │              │
+                    short intake     plan-panel      /kickoff
+                    → single plan  (single backbone) (3 methods × 2
+                                                      backbones, blind
+                                                      → refute → synth)
+                                                            │
+                                                     user ADOPT gate
+                                                            │
+                                                       /specpack
+                            ┌───────────────────────────────┘
+                            ▼
+                 build: one writer per worktree + TDD
+                            │
+                            ├─ need to compare real alternatives?
+                            │  → /race (isolation + blind judges)
+                            ▼
+                 verify: verify.sh → cross-lab reviewer (pinned commit)
+                            │
+                            ▼
+                 finish: qualityloop → user ship gate → /ship
+```
+
+Settled 2026-07-30: parallel collaboration unified on **orca-trio** real-terminal crews (Claude Code Agent Teams retired), planning review split by stakes, and `qualityloop` vs stop-review made mutually exclusive.
+
+## 6. Operating contracts — what makes it a crew, not just terminals
+
+- **Single ownership** — Orca owns lifecycle; git owns code; real test output owns "works"; the user owns decisions. No two systems own the same state.
 - **One writer per worktree**; reviewers are read-only against a pinned commit; `APPROVE`/`REVISE` loops end with a *fresh* reviewer.
 - **Serial worker startup** (create → tui-idle → next) to avoid hook-bundle races; dispatch runs parallel afterwards.
-- **Measured failure semantics**: worker kill → dispatch auto-fails, task auto-returns to ready · duplicate `worker_done` delivered twice with no runtime dedup (coordinator dedupes) · a superseded dispatch's late `worker_done` has zero state authority · app restart preserves orchestration state and reattaches panes.
+- **Measured failure semantics** — worker kill → dispatch auto-fails and the task auto-returns to ready (recovery = one re-dispatch) · duplicate `worker_done` is delivered twice with **no runtime dedup** (the coordinator dedupes) · a superseded dispatch's late `worker_done` has zero state authority · an app restart preserves orchestration state and reattaches panes.
+
+## 7. Evidence discipline — the definition of "done"
+
+The real center of gravity of the system.
+
+| Gate | Rule |
+|---|---|
+| `verify.sh` | zero executed checks is **not** PASS → exit 2 `NOT_VERIFIED` |
+| `worker_done` | only a matching `(taskId, current dispatchId)` pair carries state authority; stale sends are mail only |
+| reviewer | read-only against a pinned commit; if the target commit moves mid-review, the review fails |
+| completion | never declared without real test / doctor / diff output |
+| finalization | fetch → divergence check → zero orphans → user gate |
+| evidence grades | 🟢 official/measured · 🟡 secondary · ⚪ inference — grade inflation is a violation |
 
 > Built and hardened in daily operation by **Claude Fable 5** (coordinator / system work), **Claude Opus** (project implementation), and **OpenAI Codex GPT‑5.6‑Sol xhigh** (adversarial review).
+
+---
 
 ## What's inside
 
 | Component | What it does |
 |---|---|
-| `CLAUDE.md` + `rules/` | Core constitution + auto-loaded topic rules: Phase 0 gate · work loop · session memory · pitfalls · **routing** · **judgment** (recency · anti-echo · evidence grades 🟢🟡⚪) · path-scoped design anti-slop. Always-on rules trimmed ~76% — detail lives in conditional runbooks |
+| `CLAUDE.md` + `rules/` | Constitution + auto-loaded topic rules (§3 above), including **judgment** (recency · anti-echo · evidence grades) and **routing** (§5 above) |
 | `AGENTS.md` | The same constitution for Codex, so both labs share one rulebook |
 | **`orca/`** (optional) | Orca-ADE crew suite: WSL↔Windows CLI bridge with quote-exact argv (501-vector fuzz-reviewed) · parser-truth Codex-runtime policy sync (no TOML disguise can false-green; 26 tests) · fail-closed platform gate (21 tests) · worker provisioner · finalization checker · crew metrics · artifact-ledger council (17 tests) · live bundled-doc loader |
-| 17 skills | `kickoff` · `orca-trio` · `race` · `qualityloop` · `newproject` · `hallmark` · `specpack` · `spec-decompose` · `crit` · `ship` · `serve` · `vcheck` · `demo` · `recall` · `remember` · `techreport` · `autopilot` |
-| 11 hooks | session-start context + project brief · per-turn archive · session-end pipeline · per-repo devlog · UI-slop nudge · skill-nudge · skill-usage-log · orca-trio guard · subagent log · techreport autopush (opt-in) · redaction |
-| 3 workflows | `council-research` · `plan-panel` · `repo-audit` — parallel multi-agent pipelines with adversarial verification and cost caps |
+| 17 skills · 11 hooks · 3 workflows · 5 subagents | The agent surfaces (see Skills below and §4 above) |
 | doctor + verify | health check (mirror drift · runtime hook trust · Orca bridge canaries · pending-decision watch) · `NOT_VERIFIED` verify semantics |
-| 5 subagents | `researcher` · `verifier` · `redteam` · `judge` · `Explore` — model-tiered by cost |
+| templates | `settings.template.json` (no-cloud locks) · safe Codex `config.toml` (secrets by env-var *name* only) · statusline |
 
 ## Skills
 
@@ -120,12 +306,33 @@ The installer copies the rulebooks, all 17 skills, 11 hooks (+tests), headless t
 
 ## The two-repo model
 
+```text
+       ┌──────────────────────────────────┐
+       │  ~/.claude  ~/.codex   (live)    │  ← what actually runs
+       └──────────────┬───────────────────┘
+                      │ sync (mirror)
+                      ▼
+    ┌────────────────────────────────────────┐
+    │ command-center            (private)    │
+    │   dotclaude/ dotcodex/  portable assets│
+    │   orca/                 the crew layer │
+    │   reports/ decisions/ projects/        │
+    └──────────────┬─────────────────────────┘
+                   │ publish (manifest allowlist + PII/danger gate)
+                   ▼
+    ┌────────────────────────────────────────┐
+    │ ultrapowers               (public)     │
+    │   the safe subset + install.sh         │
+    │   + CHANGELOG (v0.1 → v0.6)            │
+    └────────────────────────────────────────┘
+```
+
 | Repo | Visibility | Role |
 |---|---|---|
 | **ultrapowers** (this) | public | The shareable agent system — constitution, rules, skills, hooks, workflows, guardrail/doctor/verify, the Orca layer, templates, installer |
 | **command-center** | private | The owner's meta hub: the same system as its deployed source of truth, plus strategy/decisions/session logs/reports/memory |
 
-Two clones, one machine: clone this repo → `install.sh`. (Owner full-restore uses the private command-center + `deploy.sh`.)
+New machine: clone this repo → `install.sh` → three manual steps (secrets file, Claude login, Codex login).
 
 ## Version history
 
@@ -137,6 +344,12 @@ See **[CHANGELOG.md](CHANGELOG.md)** — every release from v0.1 (2026-06-05) to
 
 <div align="center">
 
-*If the cross-lab-crew idea resonates, a ⭐ helps others find it.*
+**Three sentences that define the design**
+
+*Split ownership so nothing is owned twice.*
+*Diverge structurally early; converge strictly late.*
+*Diversity catches what redundancy cannot.*
+
+*If that resonates, a ⭐ helps others find it.*
 
 </div>
