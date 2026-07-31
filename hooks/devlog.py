@@ -3,7 +3,7 @@
 
 🤖 무엇: 세션이 끝날 때 그 세션의 대화 전체를 LLM(haiku)으로 정제·요약해
    <repo루트>/DEVLOG.md 에 "요청 의도 / 실제 작업 / 결정·이유 / 미완" 형식으로 쌓는다.
-   worklog(~/main/worklog, 메타 요약)와 별개 — 이건 *그 프로젝트 폴더 안에* 남는,
+   worklog($COMMAND_CENTER/worklog, 메타 요약)와 별개 — 이건 *그 프로젝트 폴더 안에* 남는,
    타인이 읽어도 맥락이 잡히는 기록 (니즈 2026-07-16: "정제+요약된 대화내역+시간+실제 작업").
 
 설계:
@@ -43,7 +43,7 @@ ENTRIES_MARK = "<!-- devlog:entries -->"
 
 # ── 시크릿 마스킹 (export-sessions.py와 동일 규칙 — DEVLOG는 커밋될 수 있어 필수) ──
 _CRED_RE = re.compile(
-    r"""(KIS_APP_KEY|KIS_APP_SECRET|KIS_CANO|KIS_ACCOUNT|KRX_ID|KRX_PW|DART_API_KEY|appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
+    r"""(appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
     re.I,
 )
 _BEARER_RE = re.compile(r"(?i)\b(bearer\s+)([A-Za-z0-9._~+/\-]{8,}=*)")
@@ -240,7 +240,7 @@ def fallback_body(turns, user_msgs, tools):
 def devlog_header(repo_name: str) -> str:
     return f"""# DEVLOG — {repo_name}
 
-> Claude Code 세션이 끝날 때마다 자동으로 쌓이는 **개발 일지**입니다 (SessionEnd 훅 `~/main/system/devlog.py`).
+> Claude Code 세션이 끝날 때마다 자동으로 쌓이는 **개발 일지**입니다 (SessionEnd 훅 `$COMMAND_CENTER/system/devlog.py`).
 > 항목 1개 = 세션 1개: **요청 의도(정제) · 실제 수행 작업 · 결정과 이유 · 미완 항목 · 터치한 파일.**
 > 최신이 위. 수동 편집 가능하나 `devlog:entry` 주석 마커는 지우지 마세요(세션 중복 방지 키).
 

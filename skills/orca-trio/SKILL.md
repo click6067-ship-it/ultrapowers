@@ -62,7 +62,7 @@ Artifact ledger가 Orca task 상태를 복제하거나 Orca CLI를 대신 호출
    runtime Codex hook bundle을 재생성하는 동안 동시 시작하면 한 terminal이
    `codex-hooks-review-prompt`에 걸릴 수 있다. 이때 effective hook을 검토·신뢰하기
    전에는 dispatch하지 않는다.
-6. 장수 조정은 라이브 orchestration lifecycle을 사용하고 exact task/dispatch ID를 검증한다.
+6. 장수 조정은 라이브 orchestration lifecycle을 사maintainer고 exact task/dispatch ID를 검증한다.
 
 ## Coordinator 루프
 

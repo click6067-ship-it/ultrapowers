@@ -15,7 +15,7 @@ specpack (이 스킬 — plan을 규격 문서로 정식화)     ← "문서 규
    ↓
 spec-decompose (큰 스펙만 — child 분해)           ← "스펙 트리" 소유
    ↓
-superpowers writing-plans → TDD 구현              ← "구현 계획·태스크" 소유
+writing-plans (커스텀 스킬) → TDD 구현            ← "구현 계획·태스크" 소유
 ```
 kickoff 없이 바로 불려도 된다(소규모 기능). 단 문제정의가 흔들리면 Phase 0 Gate(Intake)부터.
 
@@ -32,7 +32,7 @@ kickoff 없이 바로 불려도 된다(소규모 기능). 단 문제정의가 �
 | **설계문서** | `docs/specs/<slug>/design.md` | 새 아키텍처·외부 API 계약·비가역 기술 선택이 있을 때 | 확립된 패턴 재사용이면 스킵 |
 | **ADR** | `docs/adr/NNNN-<slug>.md` | 되돌리기 어려운 결정이 내려진 순간마다 1건 | 가역적·사소한 결정 |
 
-파일 위치는 **해당 프로젝트 repo** 기준(spec-kit `specs/`·Kiro `.kiro/specs/` 관행의 절충 — `docs/` 아래로 모아 타인이 바로 찾게). 메타/전략 결정은 기존 `~/main/decisions/log.md` 그대로(그건 ADR의 경량 변형이다).
+파일 위치는 **해당 프로젝트 repo** 기준(spec-kit `specs/`·Kiro `.kiro/specs/` 관행의 절충 — `docs/` 아래로 모아 타인이 바로 찾게). 메타/전략 결정은 기존 `$COMMAND_CENTER/decisions/log.md` 그대로(그건 ADR의 경량 변형이다).
 
 ## 절차
 
@@ -58,7 +58,7 @@ kickoff 없이 바로 불려도 된다(소규모 기능). 단 문제정의가 �
 
 ### 4. 마무리·handoff
 - PRD frontmatter에 `status: ready_for_decomposition` 마킹 (spec-decompose 사전조건 게이트와 연결).
-- 분해가 필요한 크기(섹션 ≥2, 독립 모듈)면 → **spec-decompose**. 아니면 바로 → **superpowers writing-plans**.
+- 분해가 필요한 크기(섹션 ≥2, 독립 모듈)면 → **spec-decompose**. 아니면 바로 → **writing-plans**(커스텀 — superpowers 비활성 후 이식본, 2026-07-30).
 - 산출 요약: 만든 문서 목록 + 스킵한 문서와 근거 + Open Questions 수.
 
 ## 안 하는 것

@@ -158,6 +158,21 @@ def check(cmd, depth=0):
                 block("크리덴셜 파일 내용 노출·복사 — 값 확인은 SHA256 지문으로 (주입은 source)")
         if c0 in ("echo", "printf") and _CRED_VAR_RE.search(seg):
             block("크리덴셜 환경변수 값 stdout 출력")
+        # F-1 (2026-07-31): curl/wget 크리덴셜 노출·탑재. 스코프 정밀 —
+        # (a) verbose류(-v/-i/--trace*)+크리덴셜 변수 = 요청 헤더의 실값이 출력에 찍힘
+        # (b) 시크릿 파일을 데이터로 탑재(@경로, --post-file 등) = 외부 전송
+        # 일반 API 호출(curl -H "$KEY", verbose 없음)은 값이 컨텍스트에 안 찍히므로 허용 유지.
+        if c0 in ("curl", "wget"):
+            verbose = any(a in ("-v", "--verbose", "-i", "--include") or a.startswith("--trace")
+                          for a in args)
+            if verbose and _CRED_VAR_RE.search(seg):
+                block("curl/wget verbose + 크리덴셜 변수 — 헤더 실값이 출력에 찍힌다 (값 확인은 SHA256 지문)")
+            for t in args:
+                cand = t[1:] if t.startswith("@") else t
+                # 파일-형 토큰만: @경로(curl 데이터 문법) 또는 실존 경로 — 헤더 문자열의
+                # "API_KEY" 오탐 방지 (allow: curl -H "Bearer $OPENAI_API_KEY")
+                if is_secret_path(cand) and (t.startswith("@") or resolves_to_real_path(cand)):
+                    block("curl/wget에 시크릿 파일 탑재 — 크리덴셜 외부 전송 금지")
         if c0 == "git" and "add" in args:
             gi = args.index("add")
             if any(a in ("-A", "--all", ".", ":/") for a in args[gi + 1:]):

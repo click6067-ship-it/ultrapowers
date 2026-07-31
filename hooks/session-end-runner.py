@@ -2,7 +2,7 @@
 """Durable, serialized SessionEnd dispatcher.
 
 The hook process only validates and queues the event, then starts a detached
-drainer.  Drainers share one flock, so hooks that mutate ~/main never race.
+drainer.  Drainers share one flock, so hooks that mutate $COMMAND_CENTER never race.
 """
 
 from __future__ import annotations

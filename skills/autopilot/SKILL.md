@@ -7,9 +7,9 @@ description: Use when the user says /autopilot/오토파일럿/야간 자율 실
 
 **정체성 (계약 §사용가이드).** "대신 생각하는 장치"가 **아니다.** 성공조건이 이미 정해진 **긴 반복 루프를 밤새·브랜치 안에서 싸게 굴리는 장치.** 방향·철학·아키텍처 결정에는 쓰지 않는다.
 
-**정본 계약:** `~/main/council/2026-07-03_autonomous-orchestration/autopilot-design.md` + `autopilot-realloop-design.md` (실 연결 계약 v2 · Codex 하드닝 8항목).
-**하네스 코드:** `~/main/system/autopilot.sh` (모든 Invariant·Kill condition을 **코드로** 강제 — 문서 약속 아님).
-**Acceptance 증명:** `~/main/system/autopilot_test.sh` (44 assertion — 26 하네스 + 18 실연결 — 전부 PASS 유지가 안전 계약).
+**정본 계약:** `$COMMAND_CENTER/council/2026-07-03_autonomous-orchestration/autopilot-design.md` + `autopilot-realloop-design.md` (실 연결 계약 v2 · Codex 하드닝 8항목).
+**하네스 코드:** `$COMMAND_CENTER/system/autopilot.sh` (모든 Invariant·Kill condition을 **코드로** 강제 — 문서 약속 아님).
+**Acceptance 증명:** `$COMMAND_CENTER/system/autopilot_test.sh` (44 assertion — 26 하네스 + 18 실연결 — 전부 PASS 유지가 안전 계약).
 
 ## 🔒 발동 규칙 (중요)
 - **자동발동 절대 금지.** 이 스킬은 사용자가 `/autopilot` 또는 명시적 "야간 자율 실행/밤새 돌려/자율 루프"라고 **직접 요청할 때만** 쓴다. session-start·다른 작업 흐름에서 스스로 트리거하지 말 것.
@@ -36,7 +36,7 @@ output:        summary.md + remaining_failures.md
 3. **무장 호출.** 봉투를 인자로 매핑해 `autopilot.sh --arm` 실행:
    ```bash
    COMMAND_CENTER="$HOME/main" \
-   bash ~/main/system/autopilot.sh --arm --real \
+   bash $COMMAND_CENTER/system/autopilot.sh --arm --real \
      --repo "<repo 절대경로>" \
      --branch "<wip-branch>" \
      --objective "<objective>" \
@@ -51,7 +51,7 @@ output:        summary.md + remaining_failures.md
    - **실 LLM 루프 = `--real`(또는 `AUTOPILOT_REAL=1`)로 opt-in.** 매 스텝 = `claude -p` 1회(fresh 헤드리스, 생성자 sonnet). `--real` 없으면 `AUTOPILOT_STEP_HOOK`(측정가능 드라이버)이나, 둘 다 없으면 **fail-closed(exit 4)로 거부**(비용 측정 불가 = 실행 안 함, invariant 1). **`--real` 없이는 claude 가 설치돼 있어도 절대 호출 안 함**(사고성 과금 방지 — opt-in 게이트, 테스트 23).
    - **⚠ `--bare` 인증:** 자식은 `--bare` 로 spawn → 인증이 **`ANTHROPIC_API_KEY` 또는 `apiKeyHelper`(--child-settings 로 주입)만** 읽는다(OAuth·keychain 안 읽음). WSL 메인(OAuth) 세션에선 `ANTHROPIC_API_KEY` export 또는 `--child-settings <apiKeyHelper 든 settings.json>` 필요. 없으면 자식이 인증 실패 → usage 없음 → **fail-closed(exit 4)** 로 안전 정지.
    - **참고(설계 대비 실제):** 설계가 가정한 `--max-turns` 는 현 claude 2.1.x에 **없음**(2.1.201에서 재확인, 2026-07-06) → 스텝당 폭주 방어는 `--per-step-secs`(워치독 kill) + `--max-budget-usd`(per-step 사전캡)으로 대체(둘 다 실재 플래그).
-4. **관찰.** 영속상태는 append-only `~/main/logs/autopilot/events.jsonl`(run_id·step·command·result·budget ledger·verdict), 렌더는 `~/main/logs/autopilot/<run_id>/progress.md`. 정지 사유는 stdout 마지막 줄 `AUTOPILOT: stop_reason=... steps=... run_id=...`.
+4. **관찰.** 영속상태는 append-only `$COMMAND_CENTER/logs/autopilot/events.jsonl`(run_id·step·command·result·budget ledger·verdict), 렌더는 `$COMMAND_CENTER/logs/autopilot/<run_id>/progress.md`. 정지 사유는 stdout 마지막 줄 `AUTOPILOT: stop_reason=... steps=... run_id=...`.
 5. **인계.** 종료 후 사용자에게 `git -C <repo> diff` 리뷰 요청. 워킹트리는 보존됨(자동 되돌림 없음). 커밋/머지는 사용자.
 
 ## 코드로 강제되는 것 (스킬이 "약속"하는 게 아님)
@@ -80,5 +80,5 @@ output:        summary.md + remaining_failures.md
 `kickoff(명령서=봉투 확정) → /autopilot(야간 실행) → qualityloop(블라인드 채점) → repo-audit/review → 수동 merge`. 서브에이전트는 무제한 병렬 아니라 역할 1~2개.
 
 ## 검증 (하네스가 안 깨졌는지)
-- `bash -n ~/main/system/autopilot.sh` · `bash ~/main/system/autopilot_test.sh`(44 assertion 전부 PASS 필수 — 실 연결 테스트는 mock claude 로 과금 없이 measurement→ledger→limit·격리 경로 검증).
+- `bash -n $COMMAND_CENTER/system/autopilot.sh` · `bash $COMMAND_CENTER/system/autopilot_test.sh`(44 assertion 전부 PASS 필수 — 실 연결 테스트는 mock claude 로 과금 없이 measurement→ledger→limit·격리 경로 검증).
 - 미무장 실행 → `AUTOPILOT: inert (unarmed)` + 부작용 0 확인.

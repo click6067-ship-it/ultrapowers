@@ -20,7 +20,7 @@ def main():
         name = (ti.get("skill") or "").strip() if isinstance(ti, dict) else ""
         if not name:
             return
-        cc = os.environ.get("COMMAND_CENTER") or os.path.expanduser("~/main")
+        cc = os.environ.get("COMMAND_CENTER") or os.path.expanduser("$COMMAND_CENTER")
         state = os.path.join(cc, "system", "state")
         os.makedirs(state, exist_ok=True)
         with open(os.path.join(state, "skill-usage.tsv"), "a", encoding="utf-8") as f:

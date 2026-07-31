@@ -1,18 +1,18 @@
 ---
 name: spec-decompose
-description: Use when the user says 기획서 분해/스펙 분해/decompose spec/스펙 트리/spec-doctor 돌려/마스터 기획서 쪼개. Splits a Phase 0 master spec into per-section child specs (LLM proposes tree → user approves → skeletons), stops at spec and hands off to superpowers writing-plans. Deterministic validation/tree rebuild = spec_doctor.py.
+description: Use when the user says 기획서 분해/스펙 분해/decompose spec/스펙 트리/spec-doctor 돌려/마스터 기획서 쪼개. Splits a Phase 0 master spec into per-section child specs (LLM proposes tree → user approves → skeletons), stops at spec and hands off to writing-plans (custom skill). Deterministic validation/tree rebuild = spec_doctor.py.
 ---
 
 # spec-decompose — 재귀적 기획서 분해 (spec tree manager)
 
 **목적.** Phase 0의 큰 마스터 기획서를 들고만 있지 말고 섹션별 child spec으로 쪼개 심층 정의하되, 쪼개기·연결·마스터변경 추적을 시스템이 떠먹여주게 한다. **기획에서 멈추고** 구현계획은 writing-plans에 넘긴다.
 
-**핵심 포지셔닝 (절대 위반 금지).** 이건 **spec tree manager지 기획 프레임워크가 아니다.** superpowers(brainstorming/writing-plans/kickoff)를 *대체* 안 하고 그 위에 얹혀 **스펙 트리의 구조·연결·변경·승인 상태만** 관리한다. 경계:
+**핵심 포지셔닝 (절대 위반 금지).** 이건 **spec tree manager지 기획 프레임워크가 아니다.** 기획·계획 스킬(kickoff/specpack/writing-plans)을 *대체* 안 하고 그 위에 얹혀 **스펙 트리의 구조·연결·변경·승인 상태만** 관리한다. 경계:
 - **이 시스템 = spec(기획서) 소유** — "무엇/왜".
 - **writing-plans = plan/task 소유** — "어떻게 구현". child spec은 plan prose를 쓰지 않는다.
 - 이 경계가 흐려지면 = 예전에 제거한 "두 번째 프레임워크" 재현 = 즉시 롤백.
 
-**정본.** 절차 정본 = 이 SKILL.md (자기완결적, clone-anywhere). 설계 근거·kickoff 회의록은 작성자 노트(`$COMMAND_CENTER/projects/spec-decompose-design.md`, 기본 `~/main`)에 있으나 *스킬 동작에 필수 아님* — 없어도 스킬은 돈다.
+**정본.** 절차 정본 = 이 SKILL.md (자기완결적, clone-anywhere). 설계 근거·kickoff 회의록은 작성자 노트(`$COMMAND_CENTER/projects/spec-decompose-design.md`, 기본 `$COMMAND_CENTER`)에 있으나 *스킬 동작에 필수 아님* — 없어도 스킬은 돈다.
 
 ---
 

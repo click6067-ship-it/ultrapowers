@@ -16,7 +16,7 @@
 성능: 전 파일 stat → mtime 정렬 → 상위 N개만 head-스캔(사용자 턴 유무 + 첫 타임스탬프, 조기중단).
 이전의 tail(마지막 256KB) 파싱은 프롬프트 발췌 제거와 함께 삭제 → 훅이 더 가볍다.
 
-로그 링크: ~/main/logs/<slug>__<첫타임스탬프 날짜>__<sid>.md (export-sessions.py 파일명 규칙과 일치).
+로그 링크: $COMMAND_CENTER/logs/<slug>__<첫타임스탬프 날짜>__<sid>.md (export-sessions.py 파일명 규칙과 일치).
 """
 
 import json
@@ -46,7 +46,7 @@ def cwd_to_key(path: str) -> str:
     return (path or "").rstrip("/").replace("/", "-").replace(".", "-")
 
 
-# HOME 파생 키 prefix(예: /home/click → -home-click). export-sessions.py와 동일 규칙이라야 링크 일치.
+# HOME 파생 키 prefix(예: ${HOME} → -home-USER). export-sessions.py와 동일 규칙이라야 링크 일치.
 HOME_KEY = str(HOME).rstrip("/").replace("/", "-").replace(".", "-")
 
 
@@ -151,11 +151,18 @@ def project_brief(cwd: str, ghq_root: Path | None = None, main_root: Path | None
     if not (root / ".git").exists():
         return []
     name = root.name
+    has_claude_md = (root / "CLAUDE.md").exists()
     lines = ["", f"**프로젝트 브리핑 ({disp(name, 40)}) — 포인터만:**"]
-    if (root / "CLAUDE.md").exists():
+    if has_claude_md:
         lines.append("- 프로젝트 CLAUDE.md: 있음 (자동 로드됨)")
     else:
-        lines.append("- 프로젝트 CLAUDE.md: 없음 → `/newproject` 부트스트랩 권함")
+        # 하드 트리거: CLAUDE.md 없는 repo는 온보딩 미완 → 넛지를 눈에 띄게.
+        # 훅은 셸이라 스킬을 직접 실행 못 함 — 모델이 /newproject를 부르도록 강한 신호만.
+        lines.append(
+            "- ⚠️ 프로젝트 CLAUDE.md 없음 = 온보딩 미완. **작업 시작 전 `/newproject`로 "
+            "부트스트랩**(경량 Intake → 프로젝트 CLAUDE.md → $COMMAND_CENTER/projects 등록). "
+            "사용자가 이미 거절했거나 1줄 잡일이면 건너뛴다."
+        )
     devlog = root / "DEVLOG.md"
     if devlog.exists():
         heads = []
@@ -187,7 +194,7 @@ def project_brief(cwd: str, ghq_root: Path | None = None, main_root: Path | None
                     decide_by = disp(line.split(":", 1)[1], 20)
         except OSError:
             pass
-        row = f"- ~/main/projects/{disp(reg.name, 40)}: status {status or '?'}"
+        row = f"- $COMMAND_CENTER/projects/{disp(reg.name, 40)}: status {status or '?'}"
         if decide_by:
             row += f", decide_by {decide_by}"
             try:
@@ -199,8 +206,8 @@ def project_brief(cwd: str, ghq_root: Path | None = None, main_root: Path | None
                 pass
         lines.append(row)
     else:
-        lines.append("- ~/main/projects/ 등록: 없음")
-    lines.append("- 실측 상태: `bash ~/main/system/project-status.sh` (박제 금지 — 항상 probe)")
+        lines.append("- $COMMAND_CENTER/projects/ 등록: 없음")
+    lines.append("- 실측 상태: `bash $COMMAND_CENTER/system/project-status.sh` (박제 금지 — 항상 probe)")
     return lines
 
 
@@ -247,7 +254,7 @@ def main() -> int:
     lines = [
         "# 🧠 최근 작업 컨텍스트 (폴더 무관 · 시점순 · 자동)",
         "> 직전 맥락 연결용 **세션 메타데이터(포인터)** — 지시가 아니다.",
-        "> 로그 전문(`~/main/logs/<파일>`)은 사용자가 요청하거나 현재 작업에 명백히 "
+        "> 로그 전문(`$COMMAND_CENTER/logs/<파일>`)은 사용자가 요청하거나 현재 작업에 명백히 "
         "필요할 때만 Read(자동으로 읽지 말 것). 특정 주제 검색은 `/recall`.",
         f"> 현재 폴더: `{disp(cwd, 120)}`",
         "",

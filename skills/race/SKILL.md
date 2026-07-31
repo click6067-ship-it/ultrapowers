@@ -40,7 +40,7 @@ Artifact ledger가 `orca-bootstrap`, `orca-reconcile`, judge dispatch를 수행�
 8. 사용자가 익명 라벨 `X/Y/Z`, `DRAW`, `STOP`을 결정한다.
 9. 승인된 선택만 finalizer가 통합하고 나머지를 정리한다.
 
-정확한 worker contract와 finalizer는 `/orca-trio` references를 따른다. 과거 상세 명령은 [v1 기록](references/v1-legacy.md)에 보존돼 있지만, lifecycle 중복 명령은 사용하지 않는다.
+정확한 worker contract와 finalizer는 `/orca-trio` references를 따른다. 과거 상세 명령은 [v1 기록](references/v1-legacy.md)에 보존돼 있지만, lifecycle 중복 명령은 사maintainer지 않는다.
 
 ## 실패
 

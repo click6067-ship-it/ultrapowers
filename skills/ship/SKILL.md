@@ -11,13 +11,13 @@ description: Use when the user says 배포해/배포까지/푸시하고 배포/�
 
 ### 1. 검증 게이트 (증거 없이 배포 없음)
 ```bash
-bash ~/main/system/verify.sh   # 스택 감지 → test·typecheck·lint·build
+bash $COMMAND_CENTER/system/verify.sh   # 스택 감지 → test·typecheck·lint·build
 ```
 FAIL이면 **여기서 멈추고 보고** — "일단 배포"는 없다. 사용자가 "검증 스킵"을 요청해도 ship은 진행하지 않고 `NOT_VERIFIED`로 종료한다 — **결정론 게이트는 항상 적용된다**(`rules/routing.md`). 검증 없이 내보내야 하면 ship 체인 밖에서 사용자가 직접 한다. *(2026-07-29 감사 BLOCKER: 같은 문장 안에서 게이트를 한마디로 우회시키고 있었다.)*
 
 ### 2. 커밋 (함정 체크 내장)
-- **author 이메일 확인** (Vercel 미스매치 차단 이력): `git log -3 --format=%ae` — 기존 배포 이메일과 다르면 멈추고 확인. 기본 신원 = `click6067-ship-it <click6067@gmail.com>`.
-- **`git diff --shortstat` 확인** — `NNN files, 0 insertions(+)`(deletions-only)면 truncate 손상 신호 → 멈춤 (2026-07-07 ~/main 사고 교훈).
+- **author 이메일 확인** (Vercel 미스매치 차단 이력): `git log -3 --format=%ae` — 기존 배포 이메일과 다르면 멈추고 확인. 기본 신원 = `click6067-ship-it <you@example.com>`.
+- **`git diff --shortstat` 확인** — `NNN files, 0 insertions(+)`(deletions-only)면 truncate 손상 신호 → 멈춤 (2026-07-07 $COMMAND_CENTER 사고 교훈).
 - **의도한 경로만 add** (`git add -A` 금지 — 샌드박스 /dev/null 마스크 함정). 커밋 메시지는 변경 요약으로.
 
 ### 3. 푸시

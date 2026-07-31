@@ -30,7 +30,7 @@ Race는 속도용 병렬화가 아니라 **평가 오염을 줄이는 고비용 
 
 ```bash
 BASE_SHA="$(git rev-parse HEAD)"
-python3 ~/main/system/orca-council.py init \
+python3 $COMMAND_CENTER/system/orca-council.py init \
   --mode race --slug <slug> \
   --brief <absolute-brief.md> --rubric <absolute-rubric.md> \
   --base-sha "$BASE_SHA" --candidates 2
@@ -56,7 +56,7 @@ OS boundary | terminal | write lease | budget`.
 ```
 
 ```bash
-python3 ~/main/system/orca-council.py orca-bootstrap \
+python3 $COMMAND_CENTER/system/orca-council.py orca-bootstrap \
   --run <run_id> --coordinator-handle <term_coord> \
   --candidate-handle candidate-1=<term_1> \
   --candidate-handle candidate-2=<term_2> \
@@ -74,7 +74,7 @@ python3 ~/main/system/orca-council.py orca-bootstrap \
 Worker_done 뒤 다음을 먼저 실행한다.
 
 ```bash
-python3 ~/main/system/orca-council.py orca-reconcile --run <run_id>
+python3 $COMMAND_CENTER/system/orca-council.py orca-reconcile --run <run_id>
 ```
 
 Task·dispatch·assignee·completed가 일치한 후보만 받는다. 제출물은 고정 commit SHA,
@@ -84,7 +84,7 @@ clean status, artifact/patch, 실제 test exit code, cost/time, limitation/block
 모든 후보가 봉인된 뒤:
 
 ```bash
-python3 ~/main/system/orca-council.py judge-bundle --run <run_id>
+python3 $COMMAND_CENTER/system/orca-council.py judge-bundle --run <run_id>
 ```
 
 Bundle에서 proposer·model·worktree path·angle·순서를 제거한다.
@@ -92,7 +92,7 @@ Bundle에서 proposer·model·worktree path·angle·순서를 제거한다.
 ## 4. 두 fresh judge
 
 ```bash
-python3 ~/main/system/orca-council.py orca-judges \
+python3 $COMMAND_CENTER/system/orca-council.py orca-judges \
   --run <run_id> --coordinator-handle <term_coord> \
   --judge-handle judge-1=<term_judge_1> \
   --judge-handle judge-2=<term_judge_2>
@@ -101,8 +101,8 @@ python3 ~/main/system/orca-council.py orca-judges \
 각 judge는 `judgeId`를 포함한 JSON을 peer 공개 전에 봉인한다. Worker_done 뒤:
 
 ```bash
-python3 ~/main/system/orca-council.py orca-reconcile --run <run_id>
-python3 ~/main/system/orca-council.py score \
+python3 $COMMAND_CENTER/system/orca-council.py orca-reconcile --run <run_id>
+python3 $COMMAND_CENTER/system/orca-council.py score \
   --run <run_id> --judgment <judge-1.json> --judgment <judge-2.json>
 ```
 
@@ -115,7 +115,7 @@ python3 ~/main/system/orca-council.py score \
 사용자는 `A/B/C`, `DRAW`, `STOP`을 결정한다. 계산 결과를 뒤집으면 이유를 기록한다.
 
 ```bash
-python3 ~/main/system/orca-council.py decide \
+python3 $COMMAND_CENTER/system/orca-council.py decide \
   --run <run_id> --choice <A|B|C|DRAW|STOP> [--reason <text>]
 ```
 

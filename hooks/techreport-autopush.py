@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """SessionEnd hook — techreport 자동 GitHub push.
 
-🤖/👤 무엇: techreport 스킬이 `~/main/reports/`에 보고서를 두고 `.push-pending` 마커를 남기면,
-세션 종료 시 이 훅이 `~/main`을 자동 commit+push → 보고서가 GitHub(private command-center)에 올라감.
+🤖/👤 무엇: techreport 스킬이 `$COMMAND_CENTER/reports/`에 보고서를 두고 `.push-pending` 마커를 남기면,
+세션 종료 시 이 훅이 `$COMMAND_CENTER`을 자동 commit+push → 보고서가 GitHub(private command-center)에 올라감.
 의도: "프로젝트 끝나면 자동으로 보고서가 GitHub에" — skill(LLM 보고서 작성) + hook(셸 push) 분담.
 언제: SessionEnd 훅 자동. 마커 없으면 즉시 종료(노이즈 0).
 
@@ -20,7 +20,7 @@ MAIN = pathlib.Path(os.environ.get("COMMAND_CENTER") or (HOME / "main"))
 MARKER = MAIN / "reports" / ".push-pending"
 LOG = MAIN / "logs" / "hooks.log"
 # 커밋 이메일 트랩(Vercel 차단 이력) 회피 — 이 머신의 확인된 배포 이메일 고정.
-EMAIL = "click6067@gmail.com"
+EMAIL = "you@example.com"
 
 
 def hlog(msg):

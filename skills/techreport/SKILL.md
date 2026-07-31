@@ -26,7 +26,7 @@ git log -3 --format=%ae   # 커밋 이메일 트랩: 정상 배포 이메일 확
 - **트러블슈팅 내역**: 무엇이 깨졌나 → 증상 → 원인(근본) → 해결 → 배운점. 가능하면 발견·수정 시각.
 - **발전과정**: 시간순 마일스톤 (init → 기능 → 리팩터 → 결정 번복 등).
 - **결정 로그**: `decisions/log.md` 같은 데서 "왜 그렇게 정했나".
-- 세션 로그(`~/main/logs/`)·메모리에서 맥락 보강.
+- 세션 로그(`$COMMAND_CENTER/logs/`)·메모리에서 맥락 보강.
 
 ### 2. 보고서 markdown 작성 (`<name>-report.md`)
 표준 헤더(`👤 사람용 · 의도 · 언제 · 기준일시`) + 아래 골격. **모든 이벤트에 날짜/시간**:
@@ -56,16 +56,16 @@ pandoc <name>-report.md -o <name>-report.docx \
 
 **보고서 작성 = 로컬 배치까지만.** 여기서 끝내고, 업로드는 아래 별도 게이트를 통과해야 한다.
 ```bash
-DIR=~/main/reports/<proj>-$(date +%F); mkdir -p "$DIR"
+DIR=$COMMAND_CENTER/reports/<proj>-$(date +%F); mkdir -p "$DIR"
 # 보안: 보고서에 토큰·키 값이 들어갔으면 검토(변수명·건수는 OK, 실제 값은 마스킹).
 cp <name>-report.md <name>-report.docx "$DIR/"
 ```
 
 **⛔ 업로드는 작성과 분리된 별도 승인이다 (2026-07-29 2백본 감사 BLOCKER).** *작성 동의 ≠ 발행 동의.* 예전에는 이 단계에서 마커를 같이 찍어 "보고서 써줘" 한마디가 SessionEnd 원격 push를 무장시켰다 — `techreport-autopush.py`는 마커가 있으면 **무조건** push하므로 되돌릴 지점이 없다. 사용자가 **업로드까지 명시로 승인한 뒤에만** 찍는다:
 ```bash
-touch ~/main/reports/.push-pending      # ← SessionEnd hook(techreport-autopush.py)이 감지
+touch $COMMAND_CENTER/reports/.push-pending      # ← SessionEnd hook(techreport-autopush.py)이 감지
 ```
-승인이 없으면 마커를 만들지 않는다 — 보고서는 로컬에만 남고 아무것도 나가지 않는다. 승인 시 세션 종료에서 `~/main`을 commit+push(reports/ pathspec 한정, 정상 이메일 고정). **skill = 보고서 작성(LLM) / hook = GitHub push(셸)** 분담 — hook은 셸이라 LLM 보고서를 못 쓰므로 이 구조가 정석.
+승인이 없으면 마커를 만들지 않는다 — 보고서는 로컬에만 남고 아무것도 나가지 않는다. 승인 시 세션 종료에서 `$COMMAND_CENTER`을 commit+push(reports/ pathspec 한정, 정상 이메일 고정). **skill = 보고서 작성(LLM) / hook = GitHub push(셸)** 분담 — hook은 셸이라 LLM 보고서를 못 쓰므로 이 구조가 정석.
 
 **(옵션) 별도 private 레포** — 보고서를 독립 레포로 원할 때(민감내용 → `--private`, 공개는 명시 확인 시만):
 ```bash
@@ -79,7 +79,7 @@ cd / && rm -rf "$WORK"
 - 끝나면 위치(또는 레포 URL)를 사용자에게 보고.
 
 ### 5. 마무리
-- 보고서 md는 소스 레포(예: `~/main/system/`)에도 두면 버전관리됨.
+- 보고서 md는 소스 레포(예: `$COMMAND_CENTER/system/`)에도 두면 버전관리됨.
 - 커스텀 스킬/시스템 변경을 동반했으면 `dotclaude/sync.sh --manual`로 미러 갱신 (무인자=안전모드·memory만).
 
 ## 함정

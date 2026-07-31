@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Claude Code 세션 JSONL → 사람이 읽는 markdown 로그 (증분 · 잠금 · prune).
 
-🤖/👤 무엇: ~/.claude/projects/*/*.jsonl 를 ~/main/logs/ 의 세션별 .md + README 인덱스로 변환.
+🤖/👤 무엇: ~/.claude/projects/*/*.jsonl 를 $COMMAND_CENTER/logs/ 의 세션별 .md + README 인덱스로 변환.
 의도: Stop 훅이 매 세션 종료 시 호출 — 전체 대화를 사람이 읽는 아카이브로 남김.
-언제: Stop 훅 자동 실행(또는 수동 `python3 ~/main/system/export-sessions.py`).
+언제: Stop 훅 자동 실행(또는 수동 `python3 $COMMAND_CENTER/system/export-sessions.py`).
 
 설계(2026-05-27 Codex 카운슬 반영):
 - **flock**: 단일 인스턴스. 동시 Stop 훅이 겹쳐도 레이스/부분쓰기 없음. 잠겨있으면 조용히 skip(다음 훅이 따라잡음).
@@ -17,7 +17,7 @@ from redaction import redact
 
 HOME = pathlib.Path.home()
 SRC = HOME / ".claude" / "projects"
-OUT = pathlib.Path(os.environ.get("COMMAND_CENTER") or (HOME / "main")) / "logs"   # COMMAND_CENTER env honored (기본 ~/main)
+OUT = pathlib.Path(os.environ.get("COMMAND_CENTER") or (HOME / "main")) / "logs"   # COMMAND_CENTER env honored (기본 $COMMAND_CENTER)
 MANIFEST = OUT / ".export-sessions.json"
 LOCK = OUT / ".export-sessions.lock"
 # HOME 파생 슬러그 prefix — recent-context.py key_to_logslug와 동일 규칙(로그 링크 일치).
@@ -59,7 +59,7 @@ def blocks_to_md(content):
 # 크리덴셜 마스킹(2026-05-31): export 아카이브에 시크릿 값 평문 저장 방지.
 # 값 시작이 '·@·( 등 특수문자여도 잡게 관대(과거 redact 누락 교훈). idempotent.
 _CRED_RE = re.compile(
-    r"""(KIS_APP_KEY|KIS_APP_SECRET|KIS_CANO|KIS_ACCOUNT|KRX_ID|KRX_PW|DART_API_KEY|appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
+    r"""(appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|secret_key|secret|token|password|passwd|bearer|authorization|private_key)(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",
     re.I,
 )
 
@@ -171,7 +171,7 @@ def main():
     # README 인덱스 = 매니페스트 전체로 재구성(스킵된 세션도 포함 — 드리프트 없음).
     index = sorted(((e["date"], e["slug"], e["turns"], e["name"]) for e in new_manifest.values()),
                    reverse=True)
-    idx_md = ("# 📜 세션 로그 (최신순)\n\n자동 생성(증분) — `python3 ~/main/system/export-sessions.py` "
+    idx_md = ("# 📜 세션 로그 (최신순)\n\n자동 생성(증분) — `python3 $COMMAND_CENTER/system/export-sessions.py` "
               "재실행으로 갱신.\n\n| 날짜 | 프로젝트 | turns | 파일 |\n|---|---|---|---|\n")
     for date, slug, n, name in index:
         idx_md += f"| {date} | {slug} | {n} | [{name}](./{name}) |\n"

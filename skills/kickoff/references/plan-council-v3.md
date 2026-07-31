@@ -43,7 +43,9 @@
 - 같은 Firecrawl을 둘 다 써도 URL 발견 경로가 다르고, Firecrawl이 서로 다른 URL의 추출기로만 쓰였다면 허용한다.
 - 같은 query/ranking 결과를 나눠 읽은 것은 독립 연구가 아니다.
 - 제출 뒤 URL, root domain, query token, citation root의 overlap을 계산한다. full v3에서 기준을 넘으면 lane synthesis를 막고 fresh retry 또는 별도 downgraded run으로 보낸다.
-- **출처 독립성은 source class가 아니라 증거 계보(evidence lineage)로 판정한다.** 같은 class의 서로 독립된 실험은 독립일 수 있고, 다른 class라도 같은 보도자료를 재인용하면 하나다.
+- **overlap 임계값 (orca-council.py 코드가 정본, 2026-07-30 문서화):** queries Jaccard > 0.6 / evidence_roots > 0.4 / urls > 0.4 / cross-lane 조합 > 0.6 → 차단. query는 표현이 아니라 정규화된 내용으로 비교한다(norm_query — 07-29 "어순만 바꾼 같은 검색" 우회 수리).
+- 감사 입력은 worker 자기보고 research log가 기본이며, **가능하면 `$COMMAND_CENTER/system/council-provenance-extract.py`로 세션 로그(jsonl)에서 실제 검색 호출을 추출해 대조한다**(자기보고↔실로그 불일치 = 그 worker provenance를 low-trust로 표시).
+- **출처 독립성은 source class가 아니라 증거 계보(evidence lineage)로 판정한다.** 같은 class의 서로 독립된 실험은 독립일 수 있고, 다른 class라도 같은 보도자료를 재인maintainer면 하나다.
 
 ## 4. 전역 blind barrier와 Lane synthesis
 
@@ -68,7 +70,10 @@
 2. **Evidence verification:** 반증 자료를 먼저 찾고, 같은 원증거를 재인용한 출처는 하나로 센다.
 3. **Refuter:** 숨은 전제, 실패조건, 삭제 가능한 기능을 공격한다. 1라운드만.
 4. **Blind judges:** 라벨을 숨긴 채 rubric으로 독립 채점한다. D1 또는 D2가 0이면 수사 점수로 이길 수 없다. 점수 차가 8 미만이면 DRAW.
+   - **judge 백본 = GPT-Sol + Opus (2026-07-30 확정).** 종합·조율을 controller(Fable)가 하므로 Fable judge는 "자기 글 자기 채점"(자기선호 편향, arXiv 2410.21819)이 된다 — judge는 컨트롤러와 다른 모델 2개로. 실행: GPT-Sol = `codex exec -s read-only -m gpt-5.6-sol -c 'model_reasoning_effort="xhigh"' "$(cat <prompt>)" < /dev/null`, Opus = fresh judge 서브에이전트(model opus).
+   - **rubric 가중치(orca-council.py 고정): D1×3 · D2×3 · D3×2 · D4×1 · D5×1 (만점 100).** D1 집행 가능성·정확성, D2 문제 적합은 상수 축이고, D3~D5의 구체 의미는 run별 rubric.md가 특화한다(예: 07-29 run은 D3 단순화 실효·D4 재발 방지 구조·D5 검증 가능성).
 5. **Synthesis:** advocate가 아닌 fresh agent가 살아남은 주장과 이견으로 spec seed를 만든다.
+6. **Fidelity check (2026-07-30 신설 — 발산 6:수렴 1 병목 보정):** spec seed 봉인 직후, **비컨트롤러 judge(GPT-Sol)**가 seed를 6 draft·3 synthesis와 대조해 **왜곡·누락만** 채점한다(품질 재채점 아님). 왜곡·누락 발견 시 seed를 수정해 재봉인한 뒤에만 user gate로 간다. blind로 지킨 다양성이 단일 종합 지점에서 증발하는 것을 막는 최소 장치.
 
 사용자는 ADOPT/PIVOT/STOP을 결정한다.
 
@@ -85,8 +90,8 @@ root
 ├─ C-F ─┤       ├─ synth-A (입력은 A-F/A-G만)
 └─ C-G ─┘       ├─ synth-B (입력은 B-F/B-G만)
                 └─ synth-C (입력은 C-F/C-G만)
-                      └─ claim-verify → refuter → judge-F + judge-G
-                                                   └→ synthesis → user gate
+                      └─ claim-verify → refuter → judge-G(GPT-Sol) + judge-O(Opus)
+                                                   └→ synthesis → fidelity-check(GPT-Sol) → user gate
 ```
 
 Artifact ledger는 Orca ID와 산출물 hash를 참조할 뿐 task 상태를 복제·수정·복구하지 않는다.
@@ -98,8 +103,8 @@ Artifact ledger는 Orca ID와 산출물 hash를 참조할 뿐 task 상태를 복
 스냅샷을 ledger에 함께 봉인한다. 이는 **controller-attested** 증거다. 현재 ledger가 Orca 런타임이나
 모델 공급자에게 직접 재조회한 “live-verified” 증거는 아니며, 그 검증은 Resource Provisioner의 책임이다.
 
-봉인·다양성 감사·결정론 채점은 `~/main/system/orca-council.py`가 담당한다. 사용자에게 보이는 run을
-`~/main/council` 아래에 둘 때는 모든 명령에 `--state-root ~/main/council`을 사용한다.
+봉인·다양성 감사·결정론 채점은 `$COMMAND_CENTER/system/orca-council.py`가 담당한다. 사용자에게 보이는 run을
+`$COMMAND_CENTER/council` 아래에 둘 때는 모든 명령에 `--state-root $COMMAND_CENTER/council`을 사용한다.
 Orca lifecycle은 여전히 별도 정본이며 ledger에는 mutable status를 복사하지 않는다.
 
 ## 7. 실패와 예산
@@ -110,7 +115,8 @@ Orca lifecycle은 여전히 별도 정본이며 ledger에는 mutable status를 �
 - full v3 정족수는 6개 전부다. 결손이 생기면 같은 run에서 느슨하게 계속하지 않는다.
 - 사용자가 비용·가용성 때문에 강등을 승인한 경우에만 별도 brief와 profile로 **새 downgraded run**을 만든다.
 - same-backbone 대체를 cross-model 결과로 위장 금지
+- **judge 결원 열화 금지 (2026-07-30 A③):** judge 한쪽이 못 뜨면 조용히 1명으로 진행하지 않는다 — orca-council.py가 2명·비컨트롤러 2백본을 하드 강제하며, 스크립트를 우회한 수동 run에서도 단독 judge 결과는 PASS가 아니라 **DEGRADED**로 표기하고 사용자 gate에 결원 사실을 명시한다 (07-29 full run의 단독 GPT judge 열화 재발 방지)
 - 발산·반박·judge 라운드는 각각 1회. 새 사실이나 봉인 brief 변경 없이는 무한 토론 금지
 - 여섯 fresh session/terminal은 **동시 6개**를 뜻하지 않는다. RAM에 맞춰 2~3개씩 wave로 실행해도
-  전역 barrier 전까지 공개만 막으면 된다. 단, 한 run 안에서 session/terminal provenance는 재사용하지 않는다.
+  전역 barrier 전까지 공개만 막으면 된다. 단, 한 run 안에서 session/terminal provenance는 재사maintainer지 않는다.
 - 비용·시간·token·재시도·사람 개입시간을 기록한다. Council은 strong single-agent 기준선과 A/B 평가 후 유지한다.

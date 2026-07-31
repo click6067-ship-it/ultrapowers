@@ -6,7 +6,7 @@ import re
 
 
 _KEY_VALUE = re.compile(
-    r"""(KIS_APP_KEY|KIS_APP_SECRET|KIS_CANO|KIS_ACCOUNT|KRX_ID|KRX_PW|DART_API_KEY|"""
+    r"""("""
     r"""appkey|appsecret|access_token|approval_key|hashkey|api_key|api_secret|client_secret|"""
     r"""secret_key|secret|token|password|passwd|authorization|private_key)"""
     r"""(["']?\s*[=:]\s*["']?)([^\s"',}\n]{4,})""",

@@ -189,8 +189,8 @@ def main() -> int:
         # Execute the real bridge paths with endpoint variables cleared. They
         # must fail open without attempting a network request.
         for bridge in (
-            Path("/home/click/.orca/agent-hooks/codex-hook.sh"),
-            Path("/home/click/.orca/agent-hooks/claude-hook.sh"),
+            Path("${HOME}/.orca/agent-hooks/codex-hook.sh"),
+            Path("${HOME}/.orca/agent-hooks/claude-hook.sh"),
         ):
             run(["/bin/sh", str(bridge)], {"hook_event_name": "Stop"}, env)
 

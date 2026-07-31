@@ -20,7 +20,11 @@ from datetime import datetime
 from pathlib import Path
 
 # 이식성: WORKLOG_DIR env 우선, 없으면 COMMAND_CENTER/worklog (기본 $COMMAND_CENTER/worklog). 개인 경로 하드코딩 제거.
-WORKLOG_DIR = Path(os.environ.get("WORKLOG_DIR") or (Path(os.environ.get("COMMAND_CENTER") or (Path.home() / "main")) / "worklog"))
+COMMAND_CENTER = Path(os.environ.get("COMMAND_CENTER") or (Path.home() / "main"))
+sys.path.insert(0, str(COMMAND_CENTER / "system"))
+from redaction import redact
+
+WORKLOG_DIR = Path(os.environ.get("WORKLOG_DIR") or (COMMAND_CENTER / "worklog"))
 SKIP_MARKER = WORKLOG_DIR / ".skip-once"  # touch 시 다음 자동기록 1회 건너뜀
 
 
@@ -87,7 +91,7 @@ def parse_transcript(path):
 def trunc(s, n=500):
     if not s:
         return ""
-    s = s.replace("\r", " ").strip()
+    s = redact(s.replace("\r", " ").strip())
     return s if len(s) <= n else s[:n].rstrip() + " …"
 
 

@@ -245,7 +245,9 @@ section("memory mirror drift")
 canon = HOME / ".claude/projects"
 mirror = CC / "system/memory-snapshot"
 drift = 0
-if canon.exists():
+if not mirror.exists():
+    print(f" {INFO} 미러 없음: {mirror} — drift 점검 skip (memory-snapshot 미러 미사용 설치에선 정상)")
+elif canon.exists():
     for proj in sorted(canon.glob("*/memory")):
         key = proj.parent.name
         cn, cm = mem_stat(proj)
@@ -258,7 +260,7 @@ if canon.exists():
 if drift:
     print(f" {WARN} {drift}개 프로젝트 미러 drift -> sync 필요")
     issues += drift
-else:
+elif mirror.exists():
     print(f" {OK} 메모리 미러 동기")
 
 # 2b. dotclaude 자산 미러 drift (skills/rules/agents/workflows/CLAUDE.md — 새 자산이 이식 미러에서 조용히 빠지는 사각 제거, 2026-07-06)
@@ -352,15 +354,81 @@ gclaude = HOME / ".claude/CLAUDE.md"
 rules_dir = HOME / ".claude/rules"
 if gclaude.exists():
     import re as _re
-    txt = gclaude.read_text()
-    refd = set(_re.findall(r'rules/([a-z0-9-]+)\.md', txt))
+    # 2026-07-31 확장(다이어트 redteam 발견2): CLAUDE.md만이 아니라 rules끼리의
+    # 상호참조(예: design-antislop → phase0-gate)도 스캔 — 파일 통합·개명 시 false-green 방지
+    _scan_srcs = [gclaude] + (sorted(rules_dir.glob("*.md")) if rules_dir.exists() else [])
+    refd = {}
+    for _src in _scan_srcs:
+        for _name in _re.findall(r'rules/([a-z0-9-]+)\.md', _src.read_text()):
+            refd.setdefault(_name, _src.name)
     present = {p.stem for p in rules_dir.glob("*.md")} if rules_dir.exists() else set()
-    missing = refd - present
+    missing = {n: src for n, src in refd.items() if n not in present}
     if missing:
-        print(f" {WARN} CLAUDE.md가 참조하는 rules 부재: {', '.join(sorted(missing))}")
+        for _n, _src in sorted(missing.items()):
+            print(f" {WARN} {_src}가 참조하는 rules 부재: rules/{_n}.md")
         issues += 1
     else:
-        print(f" {OK} rules {len(present)}개, CLAUDE.md 참조 {len(refd)}개 전부 실재")
+        print(f" {OK} rules {len(present)}개, 참조 {len(refd)}개(CLAUDE.md+rules 상호) 전부 실재")
+
+# 3c. skill 참조 무결성 (2026-07-30 전면감사 A② — superpowers류 재발 차단:
+# 스킬·rules 본문이 가리키는 스킬/플러그인이 실제 로드 가능한가. 1d는 인스턴스 수리, 이건 클래스 수리)
+section("skill 참조 무결성")
+skills_dir = HOME / ".claude/skills"
+wf_dir = HOME / ".claude/workflows"
+loadable = {p.name for p in skills_dir.iterdir() if p.is_dir()} if skills_dir.exists() else set()
+if wf_dir.exists():
+    loadable |= {p.stem for p in wf_dir.glob("*.md")}
+_BUILTIN_SLASH = {
+    "plugin", "mcp", "model", "config", "hooks", "clear", "help", "effort", "fast",
+    "code-review", "ultrareview", "init", "review", "security-review", "compact", "sandbox",
+    "workflows", "loop", "schedule", "install-slack-app", "simplify", "run", "dataviz",
+    "update-config", "statusline", "resume", "rewind", "export", "context", "cost", "doctor",
+    # 경로·일반어 오탐 가드
+    "home", "tmp", "dev", "usr", "etc", "bin", "mnt", "opt", "var", "proc",
+}
+_disabled_plugins = {name.split("@")[0] for name, on in (cfg.get("enabledPlugins", {}) or {}).items() if on is False}
+_scan = list(skills_dir.glob("*/SKILL.md")) + list(skills_dir.glob("*/references/*.md")) + \
+        (list(rules_dir.glob("*.md")) if rules_dir.exists() else [])
+_ref_issues = []
+import re as _re2
+for _f in _scan:
+    try:
+        _body = _f.read_text()
+    except Exception:
+        continue
+    _rel = str(_f).replace(str(HOME), "~")
+    # 사실 서술 문맥("비활성이라", "deferred", "슬래시커맨드가 아니라")은 실행 참조가 아니다
+    _EXEMPT_CTX = r"비활성|이식|disabled|deferred|없|않|리터럴|제거|사고|폐기|과거|였|아니라|예정"
+    # 'codex'는 CLI 바이너리 이름과 겹쳐 단어 스캔이 오탐 — 플러그인 호출형(/codex:...)만 검사
+    _AMBIGUOUS_PLUGIN_NAMES = {"codex"}
+    for _plug in _disabled_plugins:
+        _pat = rf"/{_re2.escape(_plug)}:[a-z]" if _plug in _AMBIGUOUS_PLUGIN_NAMES else rf"\b{_re2.escape(_plug)}\b"
+        for _m in _re2.finditer(_pat, _body):
+            _line = _body.count("\n", 0, _m.start()) + 1
+            _ctx = _body[max(0, _m.start() - 80):_m.start() + 80].replace("\n", " ")
+            if _re2.search(_EXEMPT_CTX, _ctx):
+                continue
+            _ref_issues.append(f"{_rel}:{_line}: 비활성 플러그인 '{_plug}' 실행 참조")
+            break
+    # 슬래시 스킬 참조 스캔은 이 시스템이 저작한 파일만 (한국어 본문 = 자작 스킬·rules 휴리스틱 —
+    # 영어 서드파티 스킬팩의 CSS·페이지경로·"A/B" 산문이 오탐의 전부였다, 2026-07-30 실측)
+    _ours = bool(_re2.search(r"[가-힣]", _body[:600])) or "/rules/" in str(_f)
+    if not _ours:
+        continue
+    for _m in _re2.finditer(r"(?:^|(?<=[\s`(]))/([a-z][a-z0-9-]{2,})\b(?![/.])", _body, _re2.MULTILINE):
+        _name = _m.group(1)
+        if _name not in loadable and _name not in _BUILTIN_SLASH:
+            _line = _body.count("\n", 0, _m.start()) + 1
+            _ctx = _body[max(0, _m.start() - 80):_m.start() + 80].replace("\n", " ")
+            if _re2.search(_EXEMPT_CTX, _ctx):
+                continue
+            _ref_issues.append(f"{_rel}:{_line}: 미로드 스킬 '/{_name}' 참조")
+if _ref_issues:
+    for _item in sorted(set(_ref_issues))[:12]:
+        print(f" {WARN} {_item}")
+    issues += 1
+else:
+    print(f" {OK} 스킬/rules 참조 대상 전부 로드 가능 (스킬·워크플로 {len(loadable)}개 기준)")
 
 # 4. plugins / statusline / guardrail
 section("plugins / config")
@@ -398,195 +466,6 @@ wl = CC / "worklog"
 if wl.exists():
     n, m = mem_stat(wl)
     print(f" {INFO} worklog {n}개 (마지막 {age(m)})")
-
-# 7. 문서-현실 drift (2026-07-03 감사 클래스 — 문서가 시스템 상태를 거짓 기술)
-section("docs-reality drift")
-drift_checks = []
-main_claude = CC / "CLAUDE.md"
-if main_claude.exists() and (CC / "worklog").exists() and "제거됨 (2026-05-27)" in main_claude.read_text():
-    drift_checks.append("CLAUDE.md: worklog '제거됨' 서술 vs 폴더 라이브 (2026-06-28 '유지' 결정 미반영)")
-sys_md = CC / "system/SYSTEM.md"
-if sys_md.exists() and "obsidian/wiki" in sys_md.read_text().lower():
-    drift_checks.append("SYSTEM.md: 폐기된 obsidian 경로가 기본값으로 잔존")
-arch_md = CC / "system/ARCHITECTURE.md"
-allow_rules = (cfg.get("permissions", {}) or {}).get("allow", [])
-if arch_md.exists() and "Bash" in allow_rules and "블랭킷" not in arch_md.read_text():
-    drift_checks.append("ARCHITECTURE.md: 권한 서술이 블랭킷 Bash 현실을 미반영")
-hook_cmds = " ".join(h.get("command", "") for gs in cfg.get("hooks", {}).values() for g in gs for h in g.get("hooks", []))
-if sys_md.exists() and "techreport-autopush" in hook_cmds and "techreport-autopush" not in sys_md.read_text():
-    drift_checks.append("SYSTEM.md: 라이브 SessionEnd 훅 techreport-autopush 미문서화")
-for d in drift_checks:
-    print(f" {WARN} {d}")
-issues += len(drift_checks)
-if not drift_checks:
-    print(f" {OK} 알려진 drift 패턴 없음")
-
-# 8. 죽은/중복 권한 규칙 (블랭킷 Bash 아래 개별 Bash 규칙 = 사문)
-section("permission rules")
-for label, spath in (("settings.json", HOME / ".claude/settings.json"), ("settings.local.json", HOME / ".claude/settings.local.json")):
-    try:
-        rules = (json.loads(spath.read_text()).get("permissions", {}) or {}).get("allow", []) if spath.exists() else []
-    except Exception:
-        rules = []
-    dead = [r for r in rules if r.startswith("Bash(")] if ("Bash" in allow_rules) else []
-    if dead:
-        print(f" {WARN} {label}: 블랭킷 Bash 아래 죽은 개별 규칙 {len(dead)}개")
-        issues += 1
-    elif rules:
-        print(f" {OK} {label}: 규칙 {len(rules)}개 (사문 없음)")
-
-# 9. 훅 크래시 무음 (>/dev/null로 에러 증발 + 로그 부재)
-# 예외: Orca 에이전트 브리지(.orca/agent-hooks/)는 페인 밖에서 조용히 no-op하는 게 계약 — 무음이 의도(2026-07-26, 오탐 10건 소음이 진짜 회귀를 묻는 문제로 화이트리스트)
-section("hook observability")
-muted = [h.get("command", "")[:60] for gs in cfg.get("hooks", {}).values() for g in gs for h in g.get("hooks", []) if ">/dev/null" in h.get("command", "") and ".orca/agent-hooks/" not in h.get("command", "")]
-for m in muted:
-    print(f" {WARN} 무음 훅: {m}")
-issues += len(muted)
-hooks_log = CC / "logs/hooks.log"
-if not muted:
-    print(f" {OK} 무음 훅 없음" + (f" (hooks.log {age(hooks_log.stat().st_mtime)})" if hooks_log.exists() else ""))
-if hooks_log.exists():
-    tail = hooks_log.read_text().splitlines()[-50:]
-    cutoff = dt.date.today() - dt.timedelta(days=2)
-    errs = []
-    for line in tail:
-        if "ERROR" not in line and "FAIL" not in line:
-            continue
-        try:
-            event_date = dt.date.fromisoformat(line[:10])
-        except ValueError:
-            event_date = dt.date.today()  # 날짜 없는 새 오류는 fail-closed
-        if event_date >= cutoff:
-            errs.append(line)
-    if errs:
-        print(f" {WARN} hooks.log 48시간 내 에러 {len(errs)}건 (마지막: {errs[-1][:70]})")
-        issues += 1
-
-# 10. worklog 캡처 품질 (하니스 태그를 프롬프트로 긁는 버그)
-section("worklog capture")
-# 러너가 *실제로 실행하는* 경로를 본다 — 2026-07-29 소유권 정합: 러너 실행 정본을
-# 라이브 ~/.claude/hooks/ 로 일원화했으므로(독트린: 정본=~/.claude, dotclaude=미러) 그쪽을 본다.
-ses_py = HOME / ".claude/hooks/session-end-summary.py"
-if ses_py.exists():
-    if "local-command-caveat" in ses_py.read_text():
-        print(f" {OK} 하니스 태그 필터 있음")
-    else:
-        print(f" {WARN} session-end-summary.py: 하니스 태그(<local-command-caveat> 등) 미필터 — 프롬프트 캡처 오염")
-        issues += 1
-
-# 11. fan-out cap 존재 (워크플로 검증 폭주 방지 — council-research 35에이전트 교훈)
-section("workflow fan-out caps")
-for wf, marker in (("council-research.js", "TOPN"), ("repo-audit.js", "TOPN")):
-    p = HOME / ".claude/workflows" / wf
-    if p.exists():
-        if marker in p.read_text():
-            print(f" {OK} {wf}: cap 있음")
-        else:
-            print(f" {WARN} {wf}: verify fan-out cap 없음 — 폭주 가능")
-            issues += 1
-
-# 12. 활성 plugin hooks 인벤토리 + 변화 감지
-section("plugin hooks inventory")
-state_p = CC / "system/.doctor-state.json"
-state = {}
-try:
-    state = json.loads(state_p.read_text()) if state_p.exists() else {}
-except Exception:
-    state = {}
-inv = {}
-plug_root = HOME / ".claude/plugins"
-try:
-    installed = (
-        json.loads((plug_root / "installed_plugins.json").read_text()).get("plugins", {})
-        if (plug_root / "installed_plugins.json").exists()
-        else {}
-    )
-except Exception:
-    installed = {}
-enabled_plugins = {
-    name for name, enabled in (cfg.get("enabledPlugins", {}) or {}).items() if enabled
-}
-ver_map = {}
-for name in sorted(enabled_plugins):
-    rows = installed.get(name) or []
-    row = rows[-1] if isinstance(rows, list) and rows else {}
-    version = row.get("version", "?") if isinstance(row, dict) else "?"
-    install_path = Path(row.get("installPath", "")) if isinstance(row, dict) else Path()
-    ver_map[name] = version
-    hook_file = install_path / "hooks/hooks.json" if str(install_path) else None
-    if hook_file and hook_file.is_file():
-        try:
-            events = sorted(json.loads(hook_file.read_text()).get("hooks", {}).keys())
-        except Exception:
-            events = ["<parse-fail>"]
-    else:
-        events = []
-    inv[name] = events
-    print(f" {INFO} {name} {version}: {','.join(events) if events else 'hooks 없음'}")
-if "vercel@claude-plugins-official" in enabled_plugins:
-    telemetry_off = (cfg.get("env") or {}).get("VERCEL_PLUGIN_TELEMETRY") == "off"
-    print(f" {OK if telemetry_off else WARN} Vercel plugin telemetry {'off' if telemetry_off else '명시적 opt-out 없음'}")
-    issues += 0 if telemetry_off else 1
-snap = {"hooks": inv, "versions": ver_map}
-if state.get("plugins") and state["plugins"] != snap:
-    print(f" {WARN} plugin hooks/버전 변화 감지 (이전 스냅샷 대비) — 검토 후 스냅샷 갱신됨")
-    issues += 1
-state["plugins"] = snap
-try:  # 상태 저장은 best-effort — 읽기 전용 FS에서도 진단은 계속돼야 함(2026-07-03 Codex A4)
-    state_p.write_text(json.dumps(state, ensure_ascii=False, indent=1))
-except OSError:
-    print(f" {INFO} 스냅샷 저장 skip (쓰기 불가 — 진단은 계속)")
-
-# 13. 미러 durable (복사≠백업 — dirty·커밋 age 판정)
-section("mirror durability")
-try:
-    dirty = subprocess.run(["git", "-C", str(CC), "status", "--porcelain", "--", "system/memory-snapshot"],
-                           capture_output=True, text=True, timeout=10).stdout.strip()
-    last_ts = subprocess.run(["git", "-C", str(CC), "log", "-1", "--format=%ct", "--", "system/memory-snapshot"],
-                             capture_output=True, text=True, timeout=10).stdout.strip()
-    hrs = (time.time() - int(last_ts)) / 3600 if last_ts else 9999
-    if dirty:
-        print(f" {WARN} memory-snapshot 미커밋 변경 {len(dirty.splitlines())}건 (마지막 커밋 {int(hrs)}h 전)")
-        issues += 1
-    elif hrs > 48 and any(True for _ in (HOME / '.claude/projects').glob('*/memory/*.md')):
-        live_latest = max((f.stat().st_mtime for f in (HOME / '.claude/projects').glob('*/memory/*.md')), default=0)
-        if time.time() - live_latest < hrs * 3600:
-            print(f" {WARN} memory-snapshot 마지막 커밋 {int(hrs)}h 전 — 라이브가 더 최신")
-            issues += 1
-        else:
-            print(f" {OK} 미러 커밋 최신 (라이브 변경 없음)")
-    else:
-        print(f" {OK} 미러 clean + 커밋 {int(hrs)}h 전")
-except Exception as e:
-    print(f" {WARN} 미러 durable 판정 실패: {e}")
-    issues += 1
-
-# 14. 기한 있는 미결 결정 (projects/*.md frontmatter decide_by + status: pending — 2026-07-26 냉정평가: "결정 안 하고 병행 유지가 진짜 과적")
-section("pending decisions")
-try:
-    import datetime as _dt
-    import re
-    pend = []
-    for f in sorted((CC / "projects").glob("*.md")):
-        head = f.read_text(errors="ignore")[:400]
-        m_by = re.search(r"^decide_by:\s*(\d{4}-\d{2}-\d{2})", head, re.M)
-        m_st = re.search(r"^status:\s*(\S+)", head, re.M)
-        if m_by and m_st and m_st.group(1) == "pending":
-            due = _dt.date.fromisoformat(m_by.group(1))
-            days = (due - _dt.date.today()).days
-            if days < 0:
-                print(f" {WARN} {f.name}: 결정 기한 {abs(days)}일 초과 (decide_by {due}) — 결정하거나 기한 갱신")
-                issues += 1
-            else:
-                pend.append(f"{f.name}(D-{days})")
-    if pend:
-        print(f" {INFO} 대기 중 결정: {' · '.join(pend)}")
-    elif not any((CC / 'projects').glob('*.md')):
-        print(f" {INFO} projects/ 없음")
-    else:
-        print(f" {OK} 기한 초과 미결 결정 없음")
-except Exception as e:
-    print(f" {WARN} pending decisions 판정 실패: {e}")
 
 # 6. 런타임 버전 (이식 검증·기록)
 section("versions")
